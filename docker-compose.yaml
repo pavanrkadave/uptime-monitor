@@ -1,0 +1,13 @@
+services:
+  db:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+        POSTGRES_USER: uptime_user
+        POSTGRES_PASSWORD: uptime_password
+        POSTGRES_DB: uptime_db
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+volumes:
+    postgres_data:

@@ -1,0 +1,31 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binaries
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Dependency directories (You are using go modules, so we ignore vendor)
+vendor/
+
+# IDEs and OS-specific files
+.idea/
+.vscode/
+.DS_Store
+
+# Environment variables and secrets (CRITICAL!)
+.env
+*.pem
+
+# Any custom binaries you might build locally
+/uptime-api
+
+# Postgres data directory
+postgres_data/
+/postgres_data/**
