@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,6 +16,8 @@ import (
 	pgMigrate "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	_ "github.com/lib/pq"
+	"github.com/pavanrkadave/uptime-monitor/internal/config"
+	"github.com/pavanrkadave/uptime-monitor/internal/logger"
 	"github.com/pavanrkadave/uptime-monitor/migrations"
 
 	"github.com/pavanrkadave/uptime-monitor/internal/api/handlers"
@@ -25,6 +27,13 @@ import (
 )
 
 func main() {
+	// Load Config
+	cfg := config.Load()
+
+	// Initialize logger
+	log := logger.Init(cfg.Environment)
+	log.Info("Starting Uptime Monitor API", slog.String("environment", cfg.Environment), slog.String("port", cfg.Port))
+
 	// Handle graceful shutdown
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -35,18 +44,23 @@ func main() {
 	}
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
-		log.Fatalf("Failed to open database connection: %v", err)
+		log.Error("Failed to open database connection ", slog.Any("error", err))
+		os.Exit(1)
 	}
 	defer func(db *sql.DB) {
 		_ = db.Close()
 	}(db)
 
 	if err := db.Ping(); err != nil {
-		log.Fatalf("Database is unreachable: %v", err)
+		log.Error("Database is unreachable", slog.Any("error", err))
+		os.Exit(1)
 	}
-	log.Println("Connected to PostgreSQL successfully!")
+	log.Info("Connected to PostgreSQL successfully!")
 
-	runDBMigrations(db)
+	if err := runDBMigrations(db); err != nil {
+		log.Error("Failed to run database migrations", slog.Any("error", err))
+		os.Exit(1)
+	}
 
 	monitorRepo := postgres.NewMonitorRepository(db)
 	monitorService := service.NewMonitorService(monitorRepo)
@@ -62,7 +76,7 @@ func main() {
 		pingScheduler.Start(ctx, 5*time.Second)
 	}()
 
-	// Setup the router
+	// Set up the router
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST /monitors", monitorHandler.HandleCreate)
@@ -77,40 +91,40 @@ func main() {
 	}
 
 	go func() {
-		log.Println("Starting API server on port 8080...")
+		log.Info("Starting API server on port 8080...")
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("Failed to start server: %v", err)
+			log.Error("Failed to start server", slog.Any("error", err))
 		}
 	}()
 
 	<-ctx.Done()
-	log.Println("Shutting down signal received! Initiating graceful shutdown...")
+	log.Info("Shutting down signal received! Initiating graceful shutdown...")
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutdownCancel()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		log.Printf("HTTP Server forced to shutdownL: %v", err)
+		log.Warn("HTTP Server forced to shutdownL: %v", err)
 	}
 
-	log.Println("Waiting for background workers to finish...")
+	log.Info("Waiting for background workers to finish...")
 	wg.Wait()
 
-	log.Println("Application shut down successfully!")
+	log.Info("Application shut down successfully!")
 }
 
 // runDBMigrations executes our embedded SQL migration files
-func runDBMigrations(db *sql.DB) {
+func runDBMigrations(db *sql.DB) error {
 	// 1. Tell golang-migrate to read from our embedded file system
 	sourceDriver, err := iofs.New(migrations.FS, ".")
 	if err != nil {
-		log.Fatalf("Failed to load embedded migrations: %v", err)
+		return err
 	}
 
 	// 2. Tell golang-migrate how to talk to our specific database
 	dbDriver, err := pgMigrate.WithInstance(db, &pgMigrate.Config{})
 	if err != nil {
-		log.Fatalf("Failed to create postgres migration driver: %v", err)
+		return err
 	}
 
 	// 3. Create the migration instance
@@ -119,18 +133,18 @@ func runDBMigrations(db *sql.DB) {
 		"postgres", dbDriver,
 	)
 	if err != nil {
-		log.Fatalf("Failed to initialize migrate instance: %v", err)
+		return err
 	}
 
 	// 4. Run it!
 	err = m.Up()
 	if err != nil {
 		if errors.Is(err, migrate.ErrNoChange) {
-			log.Println("Database schema is up to date. No migrations applied.")
-		} else {
-			log.Fatalf("Failed to run migrations: %v", err)
+			slog.Info("Database schema is up to date. No migrations applied.")
+			return nil
 		}
-	} else {
-		log.Println("Database migrations applied successfully!")
+		return err
 	}
+	slog.Info("Database migrations applied successfully!")
+	return nil
 }

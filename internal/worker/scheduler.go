@@ -2,7 +2,7 @@ package worker
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -28,12 +28,12 @@ func (s *Scheduler) Start(ctx context.Context, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	log.Printf("Starting background worker, pinging every %s\n", interval)
+	slog.Info("Starting background worker ", slog.Any("interval", interval))
 
 	for {
 		select {
 		case <-ctx.Done():
-			log.Println("Worker shutting down safely..")
+			slog.Info("Worker shutting down safely..")
 			return
 		case <-ticker.C:
 			s.runCheckCycle(ctx)
@@ -44,16 +44,16 @@ func (s *Scheduler) Start(ctx context.Context, interval time.Duration) {
 func (s *Scheduler) runCheckCycle(ctx context.Context) {
 	monitors, err := s.provider.ListAll(ctx)
 	if err != nil {
-		log.Printf("Worker failed to list all monitors: %v\n", err)
+		slog.Error("Worker failed to list all monitors ", slog.Any("error", err))
 		return
 	}
 
 	if len(monitors) == 0 {
-		log.Printf("Nothing to monitor..\n")
+		slog.Info("Nothing to monitor, sleeping until next check...")
 		return
 	}
 
-	log.Printf("Worker waking up: checking %d monitors concurrently...\n", len(monitors))
+	slog.Info("Worker waking up: checking monitors concurrently.", slog.Any("monitors", len(monitors)))
 	var wg sync.WaitGroup
 
 	for _, monitor := range monitors {
@@ -65,9 +65,9 @@ func (s *Scheduler) runCheckCycle(ctx context.Context) {
 			result := PingSite(ctx, monitor.URL)
 
 			if result.IsUp {
-				log.Printf("✅ UP: %s (Status: %d, Time: %v)\n", result.URL, result.StatusCode, result.Duration)
+				slog.Info("Link is UP ✅", slog.Any("url", result.URL), slog.Any("status_code", result.StatusCode), slog.Any("duration", result.Duration.Milliseconds()))
 			} else {
-				log.Printf("❌ DOWN: %s (Error: %s)\n", result.URL, result.ErrorMessage)
+				slog.Info("Link is DOWN ❌", slog.Any("url", result.URL), slog.String("error", result.ErrorMessage))
 			}
 
 			dbCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -75,10 +75,10 @@ func (s *Scheduler) runCheckCycle(ctx context.Context) {
 
 			err := s.provider.SavePingResult(dbCtx, monitor.ID, result.IsUp, result.StatusCode, result.Duration, result.ErrorMessage)
 			if err != nil {
-				log.Printf("⚠️ Failed to save ping result for %s: %v\n", monitor.URL, err)
+				slog.Error("⚠️ Failed to save ping result", slog.String("monitor", monitor.URL), slog.Any("error", err))
 			}
 		}(monitor)
 	}
 	wg.Wait()
-	log.Println("Worker cycle complete. Sleeping until next check...")
+	slog.Info("Worker cycle complete. Sleeping until next check...")
 }
