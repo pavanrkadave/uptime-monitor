@@ -1,0 +1,31 @@
+# Source Control
+.git
+.gitignore
+
+# IDE's
+.idea/
+.vscode/
+
+# Local Database Volumes
+db_data/
+pg_data/
+pgdata/
+postgres_data/
+
+# Go Artifacts
+bin/
+*.exe
+*.test
+*.out
+vendor/
+
+# Environment Files
+.env
+.env.local
+.env.*.local
+
+# Dockerfiles
+Dockerfile
+docker-compose.yml
+docker-compose.*.yml
+.dockerignore
