@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS ping_results;
+DROP TABLE IF EXISTS monitors;
