@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/pavanrkadave/uptime-monitor/internal/domain"
 )
@@ -106,4 +107,11 @@ func (m *MonitorRepository) Delete(ctx context.Context, ID int64) error {
 	}
 
 	return nil
+}
+
+func (m *MonitorRepository) SavePingResult(ctx context.Context, monitorID int64, isUp bool, statusCode int, duration time.Duration, errMsg string) error {
+	query := `INSERT INTO ping_results (monitor_id, is_up, status_code, duration_ms, error_message) VALUES ($1, $2, $3, $4, $5);`
+
+	_, err := m.db.ExecContext(ctx, query, monitorID, isUp, statusCode, duration.Milliseconds(), errMsg)
+	return err
 }

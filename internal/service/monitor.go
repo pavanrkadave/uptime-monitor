@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"github.com/pavanrkadave/uptime-monitor/internal/domain"
 )
@@ -12,6 +13,7 @@ type MonitorStore interface {
 	Create(ctx context.Context, monitor domain.Monitor) (*domain.Monitor, error)
 	Update(ctx context.Context, monitor domain.Monitor) (*domain.Monitor, error)
 	Delete(ctx context.Context, ID int64) error
+	SavePingResult(ctx context.Context, monitorID int64, isUp bool, statusCode int, duration time.Duration, errMsg string) error
 }
 
 type MonitorService struct {
@@ -59,4 +61,8 @@ func (m *MonitorService) Update(ctx context.Context, id int64, url string) (*dom
 
 func (m *MonitorService) Delete(ctx context.Context, ID int64) error {
 	return m.store.Delete(ctx, ID)
+}
+
+func (m *MonitorService) SavePingResult(ctx context.Context, monitorID int64, isUp bool, statusCode int, duration time.Duration, errMsg string) error {
+	return m.store.SavePingResult(ctx, monitorID, isUp, statusCode, duration, errMsg)
 }

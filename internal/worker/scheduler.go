@@ -11,6 +11,7 @@ import (
 
 type MonitorProvider interface {
 	ListAll(ctx context.Context) ([]*domain.Monitor, error)
+	SavePingResult(ctx context.Context, monitorID int64, isUp bool, statusCode int, duration time.Duration, errMsg string) error
 }
 
 type Scheduler struct {
@@ -58,7 +59,7 @@ func (s *Scheduler) runCheckCycle(ctx context.Context) {
 	for _, monitor := range monitors {
 		wg.Add(1)
 
-		go func(url string) {
+		go func(monitor *domain.Monitor) {
 			defer wg.Done()
 
 			result := PingSite(ctx, monitor.URL)
@@ -68,7 +69,15 @@ func (s *Scheduler) runCheckCycle(ctx context.Context) {
 			} else {
 				log.Printf("❌ DOWN: %s (Error: %s)\n", result.URL, result.ErrorMessage)
 			}
-		}(monitor.URL)
+
+			dbCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+
+			err := s.provider.SavePingResult(dbCtx, monitor.ID, result.IsUp, result.StatusCode, result.Duration, result.ErrorMessage)
+			if err != nil {
+				log.Printf("⚠️ Failed to save ping result for %s: %v\n", monitor.URL, err)
+			}
+		}(monitor)
 	}
 	wg.Wait()
 	log.Println("Worker cycle complete. Sleeping until next check...")
