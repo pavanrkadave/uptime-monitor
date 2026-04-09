@@ -16,11 +16,13 @@ type MonitorProvider interface {
 
 type Scheduler struct {
 	provider MonitorProvider
+	log      *slog.Logger
 }
 
-func NewScheduler(provider MonitorProvider) *Scheduler {
+func New(provider MonitorProvider, log *slog.Logger) *Scheduler {
 	return &Scheduler{
 		provider: provider,
+		log:      log.With("component", "monitor-scheduler"),
 	}
 }
 
@@ -28,12 +30,12 @@ func (s *Scheduler) Start(ctx context.Context, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	slog.Info("Starting background worker ", slog.Any("interval", interval))
+	s.log.Info("Starting background worker ", slog.Any("interval", interval))
 
 	for {
 		select {
 		case <-ctx.Done():
-			slog.Info("Worker shutting down safely..")
+			s.log.Info("Worker shutting down safely..")
 			return
 		case <-ticker.C:
 			s.runCheckCycle(ctx)
@@ -44,16 +46,16 @@ func (s *Scheduler) Start(ctx context.Context, interval time.Duration) {
 func (s *Scheduler) runCheckCycle(ctx context.Context) {
 	monitors, err := s.provider.ListAll(ctx)
 	if err != nil {
-		slog.Error("Worker failed to list all monitors ", slog.Any("error", err))
+		s.log.Error("Worker failed to list all monitors ", slog.Any("error", err))
 		return
 	}
 
 	if len(monitors) == 0 {
-		slog.Info("Nothing to monitor, sleeping until next check...")
+		s.log.Info("Nothing to monitor, sleeping until next check...")
 		return
 	}
 
-	slog.Info("Worker waking up: checking monitors concurrently.", slog.Any("monitors", len(monitors)))
+	s.log.Info("Worker waking up: checking monitors concurrently.", slog.Any("monitors", len(monitors)))
 	var wg sync.WaitGroup
 
 	for _, monitor := range monitors {
@@ -65,9 +67,9 @@ func (s *Scheduler) runCheckCycle(ctx context.Context) {
 			result := PingSite(ctx, monitor.URL)
 
 			if result.IsUp {
-				slog.Info("Link is UP ✅", slog.Any("url", result.URL), slog.Any("status_code", result.StatusCode), slog.Any("duration", result.Duration.Milliseconds()))
+				s.log.Info("Link is UP ✅", slog.Any("url", result.URL), slog.Any("status_code", result.StatusCode), slog.Any("duration", result.Duration.Milliseconds()))
 			} else {
-				slog.Info("Link is DOWN ❌", slog.Any("url", result.URL), slog.String("error", result.ErrorMessage))
+				s.log.Info("Link is DOWN ❌", slog.Any("url", result.URL), slog.String("error", result.ErrorMessage))
 			}
 
 			dbCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -75,10 +77,10 @@ func (s *Scheduler) runCheckCycle(ctx context.Context) {
 
 			err := s.provider.SavePingResult(dbCtx, monitor.ID, result.IsUp, result.StatusCode, result.Duration, result.ErrorMessage)
 			if err != nil {
-				slog.Error("⚠️ Failed to save ping result", slog.String("monitor", monitor.URL), slog.Any("error", err))
+				s.log.Error("⚠️ Failed to save ping result", slog.String("monitor", monitor.URL), slog.Any("error", err))
 			}
 		}(monitor)
 	}
 	wg.Wait()
-	slog.Info("Worker cycle complete. Sleeping until next check...")
+	s.log.Info("Worker cycle complete. Sleeping until next check...")
 }

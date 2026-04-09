@@ -73,10 +73,10 @@ func (m *MonitorRepository) Update(ctx context.Context, monitor domain.Monitor) 
 	query := `UPDATE monitors
 			  SET url = $2, updated_at = CURRENT_TIMESTAMP
 			  WHERE id = $1
-			  RETURNING id,url, created_at, updated_at;`
+			  RETURNING id, url, created_at, updated_at;`
 
 	var updatedMonitor domain.Monitor
-	err := m.db.QueryRowContext(ctx, query, monitor.URL, monitor.ID).Scan(
+	err := m.db.QueryRowContext(ctx, query, monitor.ID, monitor.URL).Scan(
 		&updatedMonitor.ID, &updatedMonitor.URL, &updatedMonitor.CreatedAt, &updatedMonitor.UpdatedAt,
 	)
 

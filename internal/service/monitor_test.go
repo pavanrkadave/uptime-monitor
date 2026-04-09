@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"errors"
+	"io"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -21,6 +23,9 @@ func (m MockStore) Update(ctx context.Context, monitor domain.Monitor) (*domain.
 	return nil, nil
 }
 func (m MockStore) Delete(ctx context.Context, ID int64) error { return nil }
+func (m MockStore) SavePingResult(ctx context.Context, monitorID int64, isUp bool, statusCode int, duration time.Duration, errMsg string) error {
+	return nil
+}
 
 type MockStoreSuccess struct {
 	MockStore
@@ -37,7 +42,8 @@ func (m MockStoreSuccess) Create(ctx context.Context, monitor domain.Monitor) (*
 func TestMonitorService_Create_ValidationFails(t *testing.T) {
 	// Arrange
 	mockStore := MockStore{}
-	svc := NewMonitorService(mockStore)
+	silentLogger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	svc := NewMonitorService(mockStore, silentLogger)
 
 	// Act
 	result, err := svc.Create(t.Context(), "")
@@ -51,7 +57,8 @@ func TestMonitorService_Create_ValidationFails(t *testing.T) {
 func TestMonitorService_Create_Success(t *testing.T) {
 	// Arrange
 	mockStore := MockStoreSuccess{}
-	svc := NewMonitorService(mockStore)
+	silentLogger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	svc := NewMonitorService(mockStore, silentLogger)
 
 	// Act
 	result, err := svc.Create(t.Context(), "https://golang.org")
