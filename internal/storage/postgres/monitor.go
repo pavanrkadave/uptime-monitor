@@ -26,7 +26,9 @@ func (m *MonitorRepository) ListAll(ctx context.Context) ([]*domain.Monitor, err
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		_ = rows.Close()
+	}(rows)
 
 	monitors := make([]*domain.Monitor, 0)
 	for rows.Next() {
