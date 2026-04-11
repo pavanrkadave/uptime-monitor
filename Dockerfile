@@ -1,5 +1,5 @@
 # =======================================
-# STAGE 1: Build the application
+# STAGE 1: Build the application        #
 # =======================================
 FROM golang:1.26-alpine AS builder
 
@@ -17,9 +17,9 @@ COPY . .
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -o uptime-api ./cmd/api
 
-# =======================================
-# STAGE 2: Create a minimal runtime image
-# =======================================
+# =========================================
+# STAGE 2: Create a minimal runtime image #
+# =========================================
 FROM alpine:latest
 
 COPY --from=builder /etc/passwd /etc/passwd

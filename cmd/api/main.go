@@ -19,6 +19,11 @@ import (
 	"github.com/pavanrkadave/uptime-monitor/internal/worker"
 )
 
+const (
+	ApplicationSuccess = iota
+	ApplicationError
+)
+
 func main() {
 	// Load Application Config & Initialize Logger
 	cfg := config.Load()
@@ -27,7 +32,7 @@ func main() {
 	// Run Application
 	if err := runApp(cfg, log); err != nil {
 		log.Error("Application error", slog.Any("error", err))
-		os.Exit(1)
+		os.Exit(ApplicationError)
 	}
 }
 

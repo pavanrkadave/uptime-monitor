@@ -18,6 +18,7 @@ func Load() *Config {
 		Environment:   getEnv("ENV", "development"),
 		Port:          getEnv("PORT", "8080"),
 		DatabaseURL:   getEnv("DATABASE_URL", "postgres://uptime_user:uptime_password@localhost:5432/uptime_db?sslmode=disable"),
+		JWTSecret:     getEnv("JWT_SECRET", "secret"),
 		CheckInterval: 10 * time.Second,
 	}
 }
