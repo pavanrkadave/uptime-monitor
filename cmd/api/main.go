@@ -64,9 +64,12 @@ func runApp(cfg *config.Config, log *slog.Logger) error {
 	monitorService := service.NewMonitorService(monitorRepo, log)
 	monitorHandler := handlers.NewMonitorHandler(monitorService, log)
 
+	authUseCase := service.NewAuthService(cfg.AdminPassword, cfg.JWTSecret, log)
+	authHandler := handlers.NewAuthHandler(authUseCase, log)
+
 	// --- Setup Workers ---
 	pingScheduler := worker.New(monitorService, log)
-	apiServer := server.New(cfg, log, monitorHandler)
+	apiServer := server.New(cfg, log, monitorHandler, authHandler)
 
 	// -- Create WaitGroup for background workers --
 	var wg sync.WaitGroup

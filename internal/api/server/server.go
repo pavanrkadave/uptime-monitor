@@ -16,8 +16,10 @@ type Server struct {
 	log        *slog.Logger
 }
 
-func New(cfg *config.Config, log *slog.Logger, monitorHandler *handlers.MonitorHandler) *Server {
+func New(cfg *config.Config, log *slog.Logger, monitorHandler *handlers.MonitorHandler, authHandler *handlers.AuthHandler) *Server {
 	mux := http.NewServeMux()
+
+	mux.HandleFunc("POST /login", authHandler.HandleLogin)
 
 	mux.HandleFunc("POST /monitors", monitorHandler.HandleCreate)
 	mux.HandleFunc("GET /monitors", monitorHandler.HandleList)
