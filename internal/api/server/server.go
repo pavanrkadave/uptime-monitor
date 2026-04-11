@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/pavanrkadave/uptime-monitor/internal/api/handlers"
+	"github.com/pavanrkadave/uptime-monitor/internal/api/middleware"
 	"github.com/pavanrkadave/uptime-monitor/internal/config"
 )
 
@@ -19,13 +20,17 @@ type Server struct {
 func New(cfg *config.Config, log *slog.Logger, monitorHandler *handlers.MonitorHandler, authHandler *handlers.AuthHandler) *Server {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("POST /login", authHandler.HandleLogin)
+	authMW := middleware.AuthMiddleware(cfg.JWTSecret, log)
 
-	mux.HandleFunc("POST /monitors", monitorHandler.HandleCreate)
+	// Public Routes
+	mux.HandleFunc("POST /login", authHandler.HandleLogin)
 	mux.HandleFunc("GET /monitors", monitorHandler.HandleList)
 	mux.HandleFunc("GET /monitors/{id}", monitorHandler.HandleGetByID)
-	mux.HandleFunc("PUT /monitors/{id}", monitorHandler.HandleUpdate)
-	mux.HandleFunc("DELETE /monitors/{id}", monitorHandler.HandleDelete)
+
+	// Protected Routes
+	mux.Handle("POST /monitors", authMW(http.HandlerFunc(monitorHandler.HandleCreate)))
+	mux.Handle("PUT /monitors/{id}", authMW(http.HandlerFunc(monitorHandler.HandleUpdate)))
+	mux.Handle("DELETE /monitors/{id}", authMW(http.HandlerFunc(monitorHandler.HandleDelete)))
 
 	return &Server{
 		httpServer: &http.Server{
