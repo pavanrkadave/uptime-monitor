@@ -12,7 +12,7 @@ import (
 )
 
 type AuthUseCase interface {
-	Login(ctx context.Context, password string) (string, error)
+	Login(ctx context.Context, email, password string) (string, error)
 }
 
 type AuthHandler struct {
@@ -21,6 +21,7 @@ type AuthHandler struct {
 }
 
 type LoginRequest struct {
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
@@ -35,9 +36,9 @@ func NewAuthHandler(useCase AuthUseCase, log *slog.Logger) *AuthHandler {
 	}
 }
 
-// HandleLogin decodes a JSON body {"password": "..."} and returns a JWT
+// HandleLogin decodes a JSON body {"email": "...", "password": "..."} and returns a JWT
 //
-// @Summary      Admin Login
+// @Summary      Login to application
 // @Description  Authenticate using an admin password to receive a JWT.
 // @Tags         Auth
 // @Accept       json
@@ -56,7 +57,13 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := h.useCase.Login(r.Context(), req.Password)
+	if req.Email == "" || req.Password == "" {
+		h.log.Debug("invalid login request", slog.Any("error", errors.New("invalid login request")))
+		response.Error(w, http.StatusBadRequest, "invalid login request")
+		return
+	}
+
+	token, err := h.useCase.Login(r.Context(), req.Email, req.Password)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidCredentials) {
 			response.Error(w, http.StatusUnauthorized, "invalid credentials")

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"github.com/pavanrkadave/uptime-monitor/internal/api/handlers"
 	"github.com/pavanrkadave/uptime-monitor/internal/api/server"
 	"github.com/pavanrkadave/uptime-monitor/internal/config"
+	"github.com/pavanrkadave/uptime-monitor/internal/domain"
 	"github.com/pavanrkadave/uptime-monitor/internal/logger"
 	"github.com/pavanrkadave/uptime-monitor/internal/service"
 	"github.com/pavanrkadave/uptime-monitor/internal/storage/postgres"
@@ -79,8 +81,24 @@ func runApp(cfg *config.Config, log *slog.Logger) error {
 	monitorService := service.NewMonitorService(monitorRepo, log)
 	monitorHandler := handlers.NewMonitorHandler(monitorService, log)
 
-	authUseCase := service.NewAuthService(cfg.AdminPassword, cfg.JWTSecret, log)
-	authHandler := handlers.NewAuthHandler(authUseCase, log)
+	userRepo := postgres.NewUserRepository(db)
+	authService := service.NewAuthService(userRepo, cfg.JWTSecret, log)
+	authHandler := handlers.NewAuthHandler(authService, log)
+
+	defaultAdminEmail := "admin@example.com"
+	_, err = userRepo.GetByEmail(ctx, defaultAdminEmail)
+	if err != nil {
+		if errors.Is(err, domain.ErrUserNotFound) {
+			log.Info("Default admin user not found, generating seed user..")
+			_, err := authService.Register(ctx, defaultAdminEmail, cfg.AdminPassword, domain.RoleAdmin)
+			if err != nil {
+				return fmt.Errorf("failed to generate default admin user %v", err)
+			}
+			log.Info("Successfully generated default admin user", slog.String("email", defaultAdminEmail))
+		} else {
+			return fmt.Errorf("failed to check for default admin user %v", err)
+		}
+	}
 
 	// --- Setup Workers ---
 	pingScheduler := worker.New(monitorService, log)
