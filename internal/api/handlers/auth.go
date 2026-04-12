@@ -34,6 +34,19 @@ func NewAuthHandler(useCase AuthUseCase, log *slog.Logger) *AuthHandler {
 	}
 }
 
+// HandleLogin decodes a JSON body {"password": "..."} and returns a JWT
+//
+// @Summary      Admin Login
+// @Description  Authenticate using an admin password to receive a JWT.
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        request body LoginRequest true "Login Credentials"
+// @Success      200 {object} LoginResponse
+// @Failure      400 {string} string "invalid request body"
+// @Failure      401 {string} string "unauthorized"
+// @Failure      500 {string} string "internal server error"
+// @Router       /login [post]
 func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

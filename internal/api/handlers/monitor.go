@@ -92,6 +92,20 @@ func (h *MonitorHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// HandleCreate decodes a JSON body {"url": "..."} and creates a new monitor.
+//
+// @Summary      Create Monitor
+// @Description  Add a new URL to the uptime monitoring system.
+// @Tags         Monitors
+// @Accept       json
+// @Produce      json
+// @Param        request body CreateRequest true "Monitor Details"
+// @Success      201 {object} CreateResponse
+// @Failure      400 {string} string "invalid request payload"
+// @Failure      401 {string} string "unauthorized"
+// @Failure      500 {string} string "internal server error"
+// @Security     BearerAuth
+// @Router       /monitors [post]
 func (h *MonitorHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	var request CreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {

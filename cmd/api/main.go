@@ -24,6 +24,17 @@ const (
 	ApplicationError
 )
 
+// @title 			Uptime Monitor API
+// @version 		1.0
+// @description 	A simple uptime monitoring service API based on Clean Architecture
+//
+// @host 			localhost:8080
+// @BasePath 		/
+//
+// @securityDefinitions.apiKey BearerAuth
+// @in 				header
+// @name 			Authorization
+// @description		Type "Bearer" followed by your JWT Token.
 func main() {
 	// Load Application Config & Initialize Logger
 	cfg := config.Load()

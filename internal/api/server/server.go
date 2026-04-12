@@ -10,6 +10,9 @@ import (
 	"github.com/pavanrkadave/uptime-monitor/internal/api/handlers"
 	"github.com/pavanrkadave/uptime-monitor/internal/api/middleware"
 	"github.com/pavanrkadave/uptime-monitor/internal/config"
+
+	_ "github.com/pavanrkadave/uptime-monitor/docs"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
 type Server struct {
@@ -21,6 +24,10 @@ func New(cfg *config.Config, log *slog.Logger, monitorHandler *handlers.MonitorH
 	mux := http.NewServeMux()
 
 	authMW := middleware.AuthMiddleware(cfg.JWTSecret, log)
+
+	// Swagger UI
+	mux.Handle("/swagger/", httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json")))
 
 	// Public Routes
 	mux.HandleFunc("POST /login", authHandler.HandleLogin)
