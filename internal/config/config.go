@@ -1,33 +1,32 @@
 package config
 
 import (
-	"os"
+	"fmt"
 	"time"
+
+	"github.com/caarlos0/env/v11"
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	Environment   string
-	Port          string
-	DatabaseURL   string
-	JWTSecret     string
-	AdminPassword string
-	CheckInterval time.Duration
+	Environment   string        `env:"ENV" envDefault:"development"`
+	Port          string        `env:"PORT" envDefault:"8080"`
+	DatabaseURL   string        `env:"DATABASE_URL,required"`
+	JWTSecret     string        `env:"JWT_SECRET,required"`
+	AdminPassword string        `env:"ADMIN_PASSWORD,required"`
+	CheckInterval time.Duration `env:"CHECK_INTERVAL" envDefault:"10s"`
 }
 
-func Load() *Config {
-	return &Config{
-		Environment:   getEnv("ENV", "development"),
-		Port:          getEnv("PORT", "8080"),
-		DatabaseURL:   getEnv("DATABASE_URL", "postgres://uptime_user:uptime_password@localhost:5432/uptime_db?sslmode=disable"),
-		JWTSecret:     getEnv("JWT_SECRET", "secret"),
-		AdminPassword: getEnv("ADMIN_PASSWORD", "admin"),
-		CheckInterval: 10 * time.Second,
-	}
-}
+// Load reads configuration from .env file and environment variables
+// Throws error if required variables are missing or invalid
+func Load() (*Config, error) {
+	// Attempt to load .env file
+	_ = godotenv.Load()
 
-func getEnv(key, fallback string) string {
-	if value, exists := os.LookupEnv(key); exists {
-		return value
+	var cfg Config
+	if err := env.Parse(&cfg); err != nil {
+		return nil, fmt.Errorf("failed to parse configuration: %w", err)
 	}
-	return fallback
+
+	return &cfg, nil
 }

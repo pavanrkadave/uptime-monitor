@@ -37,7 +37,11 @@ const (
 // @description		Type "Bearer" followed by your JWT Token.
 func main() {
 	// Load Application Config & Initialize Logger
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		panic(fmt.Sprintf("Configuration ERROR: %v", err))
+	}
+
 	log := logger.Init(cfg.Environment)
 
 	// Run Application
