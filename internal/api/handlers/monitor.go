@@ -47,6 +47,15 @@ func NewMonitorHandler(useCase MonitorUseCase, log *slog.Logger) *MonitorHandler
 	}
 }
 
+// HandleList returns all monitors in the system.
+//
+// @Summary      List Monitors
+// @Description  Retrieve a list of all monitors currently being tracked.
+// @Tags         Monitors
+// @Produce      json
+// @Success      200 {array} domain.Monitor
+// @Failure      500 {string} string "internal server error"
+// @Router       /monitors [get]
 func (h *MonitorHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	monitors, err := h.useCase.ListAll(r.Context())
 	if err != nil {
@@ -63,6 +72,18 @@ func (h *MonitorHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// HandleGetByID returns a specific monitor by its ID.
+//
+// @Summary      Get Monitor by ID
+// @Description  Retrieve details of a specific monitor using its unique ID.
+// @Tags         Monitors
+// @Produce      json
+// @Param        id   path      int  true  "Monitor ID"
+// @Success      200 {object} domain.Monitor
+// @Failure      400 {string} string "invalid monitor id"
+// @Failure      404 {string} string "monitor not found"
+// @Failure      500 {string} string "internal server error"
+// @Router       /monitors/{id} [get]
 func (h *MonitorHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -136,6 +157,22 @@ func (h *MonitorHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// HandleUpdate decodes a JSON body {"url": "..."} and updates a new monitor.
+//
+// @Summary      Update Monitor
+// @Description  Update the URL of an existing monitor in the system.
+// @Tags         Monitors
+// @Accept       json
+// @Produce      json
+// @Param        id      path     int  true  "Monitor ID"
+// @Param        request body UpdateRequest true "Updated Monitor Details"
+// @Success      200 {object} domain.Monitor
+// @Failure      400 {string} string "invalid request payload"
+// @Failure      401 {string} string "unauthorized"
+// @Failure      404 {string} string "monitor not found"
+// @Failure      500 {string} string "internal server error"
+// @Security     BearerAuth
+// @Router       /monitors/{id} [put]
 func (h *MonitorHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -176,6 +213,19 @@ func (h *MonitorHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// HandleDelete removes a monitor from the system entirely.
+//
+// @Summary      Delete Monitor
+// @Description  Remove a monitor using its unique ID.
+// @Tags         Monitors
+// @Param        id   path      int  true  "Monitor ID"
+// @Success      204 "No Content"
+// @Failure      400 {string} string "invalid monitor id"
+// @Failure      401 {string} string "unauthorized"
+// @Failure      404 {string} string "monitor not found"
+// @Failure      500 {string} string "internal server error"
+// @Security     BearerAuth
+// @Router       /monitors/{id} [delete]
 func (h *MonitorHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
