@@ -11,6 +11,17 @@ definitions:
       url:
         type: string
     type: object
+  domain.MonitorStats:
+    properties:
+      avg_latency_ms:
+        type: number
+      p95_latency_ms:
+        type: number
+      total_pings:
+        type: integer
+      uptime_percentage:
+        type: number
+    type: object
   handlers.CreateRequest:
     properties:
       url:
@@ -146,6 +157,8 @@ paths:
       - Monitors
   /monitors/{id}:
     delete:
+      consumes:
+      - application/json
       description: Remove a monitor using its unique ID.
       parameters:
       - description: Monitor ID
@@ -153,9 +166,13 @@ paths:
         name: id
         required: true
         type: integer
+      produces:
+      - application/json
       responses:
-        "204":
-          description: No Content
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Monitor'
         "400":
           description: Bad Request
           schema:
@@ -249,6 +266,37 @@ paths:
       security:
       - BearerAuth: []
       summary: Update Monitor
+      tags:
+      - Monitors
+  /monitors/{id}/stats:
+    get:
+      description: Retrieve stats for a monitored URL using its unique ID.
+      parameters:
+      - description: Monitor ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.MonitorStats'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Fetch Monitor Stats
       tags:
       - Monitors
 securityDefinitions:

@@ -37,3 +37,10 @@ func (m Monitor) Validate() error {
 	}
 	return nil
 }
+
+type MonitorStats struct {
+	TotalPings       int     `json:"total_pings"`
+	UptimePercentage float64 `json:"uptime_percentage"`
+	AvgLatencyMs     float64 `json:"avg_latency_ms"`
+	P95LatencyMs     float64 `json:"p95_latency_ms"`
+}

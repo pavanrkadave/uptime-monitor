@@ -15,6 +15,7 @@ type MonitorStore interface {
 	Update(ctx context.Context, monitor domain.Monitor) (*domain.Monitor, error)
 	Delete(ctx context.Context, ID int64) error
 	SavePingResult(ctx context.Context, monitorID int64, isUp bool, statusCode int, duration time.Duration, errMsg string) error
+	GetStats(ctx context.Context, monitorID int64) (*domain.MonitorStats, error)
 }
 
 type MonitorService struct {
@@ -76,4 +77,9 @@ func (m *MonitorService) Delete(ctx context.Context, ID int64) error {
 func (m *MonitorService) SavePingResult(ctx context.Context, monitorID int64, isUp bool, statusCode int, duration time.Duration, errMsg string) error {
 	m.log.Info("saving ping result", slog.Int64("monitorID", monitorID))
 	return m.store.SavePingResult(ctx, monitorID, isUp, statusCode, duration, errMsg)
+}
+
+func (m *MonitorService) GetStats(ctx context.Context, monitorID int64) (*domain.MonitorStats, error) {
+	m.log.Info("getting stats for monitor", slog.Int64("monitorID", monitorID))
+	return m.store.GetStats(ctx, monitorID)
 }

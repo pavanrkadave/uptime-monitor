@@ -117,3 +117,29 @@ func (m *MonitorRepository) SavePingResult(ctx context.Context, monitorID int64,
 	_, err := m.db.ExecContext(ctx, query, monitorID, isUp, statusCode, duration.Milliseconds(), errMsg)
 	return err
 }
+
+func (m *MonitorRepository) GetStats(ctx context.Context, monitorID int64) (*domain.MonitorStats, error) {
+	query := `SELECT COUNT(*) as total_pings,
+					 COALESCE(
+					 	(COUNT(*) FILTER (WHERE is_up = true) * 100.0) / NULLIF(COUNT(*),0), 0
+					 ) as uptime_percentage,
+					 COALESCE(AVG(duration_ms) FILTER (WHERE is_up = true), 0) as avg_latency_ms,
+					 COALESCE(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_ms), 0) as p95_latency_ms
+			  FROM ping_results
+			  WHERE monitor_id = $1;`
+
+	var stats domain.MonitorStats
+
+	err := m.db.QueryRowContext(ctx, query, monitorID).Scan(
+		&stats.TotalPings,
+		&stats.UptimePercentage,
+		&stats.AvgLatencyMs,
+		&stats.P95LatencyMs,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &stats, nil
+}

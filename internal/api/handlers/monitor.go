@@ -20,6 +20,7 @@ type MonitorUseCase interface {
 	GetByID(ctx context.Context, id int64) (*domain.Monitor, error)
 	Update(ctx context.Context, id int64, url string) (*domain.Monitor, error)
 	Delete(ctx context.Context, id int64) error
+	GetStats(ctx context.Context, monitorID int64) (*domain.MonitorStats, error)
 }
 
 type MonitorHandler struct {
@@ -202,8 +203,10 @@ func (h *MonitorHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 // @Summary      Delete Monitor
 // @Description  Remove a monitor using its unique ID.
 // @Tags         Monitors
-// @Param        id   path      int  true  "Monitor ID"
-// @Success      204 "No Content"
+// @Accept       json
+// @Produce      json
+// @Param        id      path     int  true  "Monitor ID"
+// @Success      200 {object} domain.Monitor
 // @Failure      400 {object} response.ErrorResponse
 // @Failure      401 {object} response.ErrorResponse
 // @Failure      404 {object} response.ErrorResponse
@@ -231,4 +234,47 @@ func (h *MonitorHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response.JSON(w, http.StatusNoContent, nil)
+}
+
+// HandleMonitorStats Fetched stats for a monitored URL.
+//
+// @Summary      Fetch Monitor Stats
+// @Description  Retrieve stats for a monitored URL using its unique ID.
+// @Tags         Monitors
+// @Produce      json
+// @Param        id   path      int  true  "Monitor ID"
+// @Success      200 {object} domain.MonitorStats
+// @Failure      400 {object} response.ErrorResponse
+// @Failure      404 {object} response.ErrorResponse
+// @Failure      500 {object} response.ErrorResponse
+// @Router       /monitors/{id}/stats [get]
+func (h *MonitorHandler) HandleMonitorStats(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		h.log.Error("failed parse id", slog.Any("error", err))
+		response.Error(w, http.StatusBadRequest, "Invalid monitor ID")
+		return
+	}
+
+	monitor, err := h.useCase.GetByID(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, domain.ErrMonitorNotFound) {
+			h.log.Error("failed find monitor", slog.Any("error", err))
+			response.Error(w, http.StatusNotFound, "Monitor not found")
+			return
+		}
+		h.log.Error("failed to fetch monitor", slog.Any("error", err))
+		response.Error(w, http.StatusInternalServerError, "Failed to fetch monitor")
+		return
+	}
+
+	stats, err := h.useCase.GetStats(r.Context(), monitor.ID)
+	if err != nil {
+		h.log.Error("failed fetch monitor stats", slog.Any("error", err))
+		response.Error(w, http.StatusInternalServerError, "Failed to retrieve monitor stats")
+		return
+	}
+
+	response.JSON(w, http.StatusOK, stats)
 }

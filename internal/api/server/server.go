@@ -49,6 +49,7 @@ func New(cfg *config.Config, log *slog.Logger, monitorHandler *handlers.MonitorH
 		r.Post("/monitors", monitorHandler.HandleCreate)
 		r.Put("/monitors/{id}", monitorHandler.HandleUpdate)
 		r.Delete("/monitors/{id}", monitorHandler.HandleDelete)
+		r.Get("/monitors/{id}/stats", monitorHandler.HandleMonitorStats)
 	})
 
 	return &Server{
