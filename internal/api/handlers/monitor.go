@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/pavanrkadave/uptime-monitor/internal/api/response"
 	"github.com/pavanrkadave/uptime-monitor/internal/domain"
 )
@@ -81,7 +82,7 @@ func (h *MonitorHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 // @Failure      500 {object} response.ErrorResponse
 // @Router       /monitors/{id} [get]
 func (h *MonitorHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
+	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		h.log.Error("failed parse id", slog.Any("error", err))
@@ -160,7 +161,7 @@ func (h *MonitorHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 // @Security     BearerAuth
 // @Router       /monitors/{id} [put]
 func (h *MonitorHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
+	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		response.Error(w, http.StatusBadRequest, "Invalid monitor ID")
@@ -210,7 +211,7 @@ func (h *MonitorHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 // @Security     BearerAuth
 // @Router       /monitors/{id} [delete]
 func (h *MonitorHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
+	idStr := chi.URLParam(r, "id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		h.log.Error("failed parse id", slog.Any("error", err))

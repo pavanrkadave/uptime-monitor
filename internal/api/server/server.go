@@ -7,8 +7,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+
 	"github.com/pavanrkadave/uptime-monitor/internal/api/handlers"
-	"github.com/pavanrkadave/uptime-monitor/internal/api/middleware"
+	middlewares "github.com/pavanrkadave/uptime-monitor/internal/api/middleware"
 	"github.com/pavanrkadave/uptime-monitor/internal/config"
 
 	_ "github.com/pavanrkadave/uptime-monitor/docs"
@@ -21,28 +24,37 @@ type Server struct {
 }
 
 func New(cfg *config.Config, log *slog.Logger, monitorHandler *handlers.MonitorHandler, authHandler *handlers.AuthHandler) *Server {
-	mux := http.NewServeMux()
 
-	authMW := middleware.AuthMiddleware(cfg.JWTSecret, log)
+	r := chi.NewRouter()
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Recoverer)
+
+	r.Use(middlewares.RequestLogger(log))
+	authMW := middlewares.AuthMiddleware(cfg.JWTSecret, log)
 
 	// Swagger UI
-	mux.Handle("/swagger/", httpSwagger.Handler(
-		httpSwagger.URL("/swagger/doc.json")))
+	r.Get("/swagger/*", httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json"),
+	))
 
 	// Public Routes
-	mux.HandleFunc("POST /login", authHandler.HandleLogin)
-	mux.HandleFunc("GET /monitors", monitorHandler.HandleList)
-	mux.HandleFunc("GET /monitors/{id}", monitorHandler.HandleGetByID)
+	r.Post("/login", authHandler.HandleLogin)
+	r.Get("/monitors", monitorHandler.HandleList)
+	r.Get("/monitors/{id}", monitorHandler.HandleGetByID)
 
 	// Protected Routes
-	mux.Handle("POST /monitors", authMW(http.HandlerFunc(monitorHandler.HandleCreate)))
-	mux.Handle("PUT /monitors/{id}", authMW(http.HandlerFunc(monitorHandler.HandleUpdate)))
-	mux.Handle("DELETE /monitors/{id}", authMW(http.HandlerFunc(monitorHandler.HandleDelete)))
+	r.Group(func(r chi.Router) {
+		r.Use(authMW)
+		r.Post("/monitors", monitorHandler.HandleCreate)
+		r.Put("/monitors/{id}", monitorHandler.HandleUpdate)
+		r.Delete("/monitors/{id}", monitorHandler.HandleDelete)
+	})
 
 	return &Server{
 		httpServer: &http.Server{
 			Addr:    ":" + cfg.Port,
-			Handler: mux,
+			Handler: r,
 		},
 		log: log.With(slog.String("component", "api-server")),
 	}
