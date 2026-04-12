@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/pavanrkadave/uptime-monitor/internal/api/response"
 	"github.com/pavanrkadave/uptime-monitor/internal/domain"
 )
 
@@ -54,22 +55,17 @@ func NewMonitorHandler(useCase MonitorUseCase, log *slog.Logger) *MonitorHandler
 // @Tags         Monitors
 // @Produce      json
 // @Success      200 {array} domain.Monitor
-// @Failure      500 {string} string "internal server error"
+// @Failure      500 {object} response.ErrorResponse
 // @Router       /monitors [get]
 func (h *MonitorHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	monitors, err := h.useCase.ListAll(r.Context())
 	if err != nil {
 		h.log.Error("failed list monitors", slog.Any("error", err))
-		http.Error(w, "Failed to retrieve monitors", http.StatusInternalServerError)
+		response.Error(w, http.StatusInternalServerError, "Failed to retrieve monitors")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(monitors); err != nil {
-		h.log.Error("failed encode response", slog.Any("error", err))
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-	}
+	response.JSON(w, http.StatusOK, monitors)
 }
 
 // HandleGetByID returns a specific monitor by its ID.
@@ -80,16 +76,16 @@ func (h *MonitorHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 // @Produce      json
 // @Param        id   path      int  true  "Monitor ID"
 // @Success      200 {object} domain.Monitor
-// @Failure      400 {string} string "invalid monitor id"
-// @Failure      404 {string} string "monitor not found"
-// @Failure      500 {string} string "internal server error"
+// @Failure      400 {object} response.ErrorResponse
+// @Failure      404 {object} response.ErrorResponse
+// @Failure      500 {object} response.ErrorResponse
 // @Router       /monitors/{id} [get]
 func (h *MonitorHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		h.log.Error("failed parse id", slog.Any("error", err))
-		http.Error(w, "Invalid monitor ID", http.StatusBadRequest)
+		response.Error(w, http.StatusBadRequest, "Invalid monitor ID")
 		return
 	}
 
@@ -97,20 +93,15 @@ func (h *MonitorHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, domain.ErrMonitorNotFound) {
 			h.log.Error("failed find monitor", slog.Any("error", err))
-			http.Error(w, "Monitor not found", http.StatusNotFound)
+			response.Error(w, http.StatusNotFound, "Monitor not found")
 			return
 		}
 		h.log.Error("error fetching monitor", slog.Any("error", err))
-		http.Error(w, "Failed to retrieve monitor", http.StatusInternalServerError)
+		response.Error(w, http.StatusInternalServerError, "Failed to retrieve monitor")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(monitor); err != nil {
-		h.log.Error("failed encode response", slog.Any("error", err))
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-	}
+	response.JSON(w, http.StatusOK, monitor)
 }
 
 // HandleCreate decodes a JSON body {"url": "..."} and creates a new monitor.
@@ -122,9 +113,9 @@ func (h *MonitorHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 // @Produce      json
 // @Param        request body CreateRequest true "Monitor Details"
 // @Success      201 {object} CreateResponse
-// @Failure      400 {string} string "invalid request payload"
-// @Failure      401 {string} string "unauthorized"
-// @Failure      500 {string} string "internal server error"
+// @Failure      400 {object} response.ErrorResponse
+// @Failure      401 {object} response.ErrorResponse
+// @Failure      500 {object} response.ErrorResponse
 // @Security     BearerAuth
 // @Router       /monitors [post]
 func (h *MonitorHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
@@ -132,29 +123,24 @@ func (h *MonitorHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		// If the JSON is malformed, send a 400 Bad Request
 		h.log.Error("failed decode create request", slog.Any("error", err))
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		response.Error(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
 	monitor, err := h.useCase.Create(r.Context(), request.URL)
 	if err != nil {
 		h.log.Error("failed create new monitor", slog.Any("error", err))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		response.Error(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	response := CreateResponse{
+	monitorResponse := CreateResponse{
 		MonitorID: monitor.ID,
 		URL:       monitor.URL,
 		CreatedAt: monitor.CreatedAt,
 		UpdatedAt: monitor.UpdatedAt,
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		h.log.Error("failed encode response", slog.Any("error", err))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	response.JSON(w, http.StatusCreated, monitorResponse)
 }
 
 // HandleUpdate decodes a JSON body {"url": "..."} and updates a new monitor.
@@ -167,24 +153,24 @@ func (h *MonitorHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 // @Param        id      path     int  true  "Monitor ID"
 // @Param        request body UpdateRequest true "Updated Monitor Details"
 // @Success      200 {object} domain.Monitor
-// @Failure      400 {string} string "invalid request payload"
-// @Failure      401 {string} string "unauthorized"
-// @Failure      404 {string} string "monitor not found"
-// @Failure      500 {string} string "internal server error"
+// @Failure      400 {object} response.ErrorResponse
+// @Failure      401 {object} response.ErrorResponse
+// @Failure      404 {object} response.ErrorResponse
+// @Failure      500 {object} response.ErrorResponse
 // @Security     BearerAuth
 // @Router       /monitors/{id} [put]
 func (h *MonitorHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		http.Error(w, "Invalid monitor ID", http.StatusBadRequest)
+		response.Error(w, http.StatusBadRequest, "Invalid monitor ID")
 		return
 	}
 
 	var request UpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		h.log.Error("failed decode update request", slog.Any("error", err))
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		response.Error(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
@@ -192,25 +178,22 @@ func (h *MonitorHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, domain.ErrMonitorNotFound) {
 			h.log.Error("failed find monitor", slog.Any("error", err))
-			http.Error(w, "Monitor not found", http.StatusNotFound)
+			response.Error(w, http.StatusNotFound, "Monitor not found")
 			return
 		}
 
 		if errors.Is(err, domain.ErrEmptyURL) || errors.Is(err, domain.ErrInvalidURL) || errors.Is(err, domain.ErrMissingScheme) {
 			h.log.Error("validation failed for monitor", slog.Any("error", err))
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			response.Error(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
 		h.log.Error("failed to update monitor", slog.Any("error", err))
-		http.Error(w, "Failed to retrieve monitor", http.StatusInternalServerError)
+		response.Error(w, http.StatusInternalServerError, "Failed to update monitor")
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(updatedMonitor); err != nil {
-		h.log.Error("failed encode response", slog.Any("error", err))
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-	}
+
+	response.JSON(w, http.StatusOK, updatedMonitor)
 }
 
 // HandleDelete removes a monitor from the system entirely.
@@ -220,10 +203,10 @@ func (h *MonitorHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 // @Tags         Monitors
 // @Param        id   path      int  true  "Monitor ID"
 // @Success      204 "No Content"
-// @Failure      400 {string} string "invalid monitor id"
-// @Failure      401 {string} string "unauthorized"
-// @Failure      404 {string} string "monitor not found"
-// @Failure      500 {string} string "internal server error"
+// @Failure      400 {object} response.ErrorResponse
+// @Failure      401 {object} response.ErrorResponse
+// @Failure      404 {object} response.ErrorResponse
+// @Failure      500 {object} response.ErrorResponse
 // @Security     BearerAuth
 // @Router       /monitors/{id} [delete]
 func (h *MonitorHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
@@ -231,7 +214,7 @@ func (h *MonitorHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		h.log.Error("failed parse id", slog.Any("error", err))
-		http.Error(w, "Invalid monitor ID", http.StatusBadRequest)
+		response.Error(w, http.StatusBadRequest, "Invalid monitor ID")
 		return
 	}
 
@@ -239,12 +222,12 @@ func (h *MonitorHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, domain.ErrMonitorNotFound) {
 			h.log.Error("failed find monitor", slog.Any("error", err))
-			http.Error(w, "Monitor not found", http.StatusNotFound)
+			response.Error(w, http.StatusNotFound, "Monitor not found")
 			return
 		}
 		h.log.Error("failed to delete monitor", slog.Any("error", err))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		response.Error(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	response.JSON(w, http.StatusNoContent, nil)
 }

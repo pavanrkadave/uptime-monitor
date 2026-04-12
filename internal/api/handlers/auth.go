@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/pavanrkadave/uptime-monitor/internal/api/response"
 	"github.com/pavanrkadave/uptime-monitor/internal/service"
 )
 
@@ -43,33 +44,29 @@ func NewAuthHandler(useCase AuthUseCase, log *slog.Logger) *AuthHandler {
 // @Produce      json
 // @Param        request body LoginRequest true "Login Credentials"
 // @Success      200 {object} LoginResponse
-// @Failure      400 {string} string "invalid request body"
-// @Failure      401 {string} string "unauthorized"
-// @Failure      500 {string} string "internal server error"
+// @Failure      400 {object} response.ErrorResponse
+// @Failure      401 {object} response.ErrorResponse
+// @Failure      500 {object} response.ErrorResponse
 // @Router       /login [post]
 func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.log.Debug("failed to decode login request", slog.Any("error", err))
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		response.Error(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
 	token, err := h.useCase.Login(r.Context(), req.Password)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidCredentials) {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			response.Error(w, http.StatusUnauthorized, "invalid credentials")
 			return
 		}
 
 		h.log.Error("login error", slog.Any("error", err))
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		response.Error(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(LoginResponse{Token: token}); err != nil {
-		h.log.Error("failed to encode response", slog.Any("error", err))
-	}
+	response.JSON(w, http.StatusOK, LoginResponse{Token: token})
 }
