@@ -31,7 +31,8 @@ const (
 // @version 		1.0
 // @description 	A simple uptime monitoring service API based on Clean Architecture
 //
-// @host 			localhost:8080
+// @host 			api.localhost
+// @schems          https http
 // @BasePath 		/
 //
 // @securityDefinitions.apiKey BearerAuth

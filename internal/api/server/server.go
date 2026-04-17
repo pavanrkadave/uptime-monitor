@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"github.com/pavanrkadave/uptime-monitor/internal/domain"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -33,6 +34,16 @@ func New(cfg *config.Config, log *slog.Logger, monitorHandler *handlers.MonitorH
 	r.Use(middleware.Recoverer)
 	r.Use(middlewares.MetricsMiddleware())
 	r.Use(middlewares.RequestLogger(log))
+
+	r.Use(cors.Handler(
+		cors.Options{
+			AllowedOrigins:   []string{"https://*", "http://*"},
+			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+			AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+			ExposedHeaders:   []string{"Link"},
+			AllowCredentials: true,
+			MaxAge:           300,
+		}))
 
 	authMW := middlewares.AuthMiddleware(cfg.JWTSecret, log)
 

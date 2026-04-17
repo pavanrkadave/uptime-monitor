@@ -85,7 +85,7 @@ definitions:
       message:
         type: string
     type: object
-host: localhost:8080
+host: api.localhost
 info:
   contact: {}
   description: A simple uptime monitoring service API based on Clean Architecture
