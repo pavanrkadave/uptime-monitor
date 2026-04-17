@@ -17,11 +17,32 @@ services:
   api:
     build: .
     ports:
-      - "8000:8000"
+      - "8000:8080"
+    env_file:
+      - .env
     environment:
       DATABASE_URL: "postgres://uptime_user:uptime_password@db:5432/uptime_db?sslmode=disable"
     depends_on:
       db:
         condition: service_healthy
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - api
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
 volumes:
     postgres_data:
