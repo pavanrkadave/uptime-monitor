@@ -1,6 +1,6 @@
 # Uptime Monitor API
 
-A robust, production-ready REST API for monitoring website uptime, latency, and generating statistics. Built with Go, following Clean Architecture principles.
+A robust, production-ready REST API for monitoring website uptime, latency, and generating statistics. Built with Go, following Clean Architecture principles, and packed with a full-scale observability stack.
 
 ## Architecture
 
@@ -9,77 +9,89 @@ This project strictly follows **Clean Architecture**:
 - **Storage (Repository):** PostgreSQL implementation using `sql.DB` and `golang-migrate` for database migrations.
 - **Service:** Business logic layer encapsulating core operations.
 - **Transport (Handlers):** HTTP layer powered by `go-chi/chi/v5` and Swagger docs.
+- **Worker:** Background scheduling loop that actively tests HTTP endpoints and records results.
 
 ## Tech Stack
 
-- **Language:** Go 1.21+
-- **Database:** PostgreSQL
+- **Language:** Go 1.26
+- **Database:** PostgreSQL 16
 - **Router:** `go-chi/chi/v5`
-- **Logging:** `log/slog` (with `lmittmann/tint` for local development)
-- **Migrations:** `golang-migrate/migrate`
-- **Documentation:** `swaggo/swag`
-- **Auth:** JWT (JSON Web Tokens) & `bcrypt` for password hashing
+- **Logging/Metrics:** `log/slog`, Prometheus Client
+- **Docs:** `swaggo/swag`
+- **Observability Stack:** Prometheus, Grafana, Loki, Promtail
+- **Deployment:** Docker & Docker Compose
 
 ## Features
 
-- **RBAC Authentication:** Secure endpoints using JWTs with Admin/Viewer roles.
+- **RBAC Authentication:** Secure endpoints using JWTs with `admin` and `viewer` roles.
+- **Auto-Seeding:** Instantly generates a default admin user on startup.
 - **Monitor CRUD:** Add, update, and manage websites to monitor.
-- **Background Worker:** Non-blocking pinger that tests monitor endpoints and logs results.
-- **Statistics Aggregation:** Real-time calculation of Uptime %, Average Latency, and P95 Latency using advanced PostgreSQL aggregates.
+- **Background Worker:** Non-blocking concurrent pinger that tests monitor endpoints and logs results.
+- **Statistics Aggregation:** Real-time calculation of Uptime %, Average Latency, and P95 Latency using PostgreSQL aggregates.
+- **Observability Dashboards:** Fully auto-provisioned Grafana dashboards tracking Ping Latency, API Traffic, Goroutines, and container logs (via Loki).
 - **Swagger Documentation:** Auto-generated interactive API docs (`/swagger/index.html`).
-- **Health Checks:** `/healthz` and `/readyz` endpoints for infrastructure checks.
 
-## Getting Started
+---
 
-### Prerequisites
-- Go 1.21+
-- Make (optional, for automation)
-- Docker & Docker Compose (for Postgres)
+## 🚀 Getting Started (Docker Compose)
 
-### 1. Start the Database
-```bash
-docker-compose up -d
-```
+The easiest way to run the entire backend, worker, database, and observability stack is using Docker Compose.
 
-### 2. Configure Environment
-Create a `.env` file referencing your database credentials and `JWT_SECRET`:
+### 1. Configure Environment
+Create a `.env` file in the root of the project:
 ```env
-DB_URL=postgres://postgres:postgres@localhost:5432/uptime?sslmode=disable
-JWT_SECRET=supersecret
+DATABASE_URL=postgres://uptime_user:uptime_password@db:5432/uptime_db?sslmode=disable
+JWT_SECRET=super_secret_key
+ADMIN_PASSWORD=admin
 ```
 
-### 3. Run the API
+### 2. Boot the Full Stack
+Bring up the Go API, PostgreSQL, Prometheus, Grafana, Loki, and Promtail all at once:
+```bash
+docker compose up --build -d
+```
+*Note: The API container runs database migrations automatically on startup.*
+
+### 3. Access the Services
+Once running, the stack binds to the following local ports:
+- **API & Swagger Docs:** [http://localhost:8000/swagger/index.html](http://localhost:8000/swagger/index.html)
+- **Grafana Dashboards:** [http://localhost:3000](http://localhost:3000) (Login: `admin` / `admin`)
+- **Prometheus Metrics:** [http://localhost:9090](http://localhost:9090)
+- **Raw API Metrics Route:** [http://localhost:8000/metrics](http://localhost:8000/metrics)
+
+---
+
+## Observability & Dashboards
+
+By navigating to **Grafana (Port 3000)** -> **Dashboards**, you will see an automatically provisioned `Uptime Monitor & API Health` dashboard. This JSON-defined dashboard streams:
+1. **Target Up/Down Status:** Real-time Prometheus Gauges showing if your links are active.
+2. **Ping Latency:** Histograms tracking HTTP check speeds.
+3. **API Traffic Rates:** Total requests hitting the chi router.
+4. **Go Internal Stats:** Goroutines and memory allocations.
+5. **Container Logs:** Live streaming logs from the API using Loki and Promtail.
+
+---
+
+## Local Development (Without Docker)
+
+If you only want to run the Go API locally, start just the Postgres container:
+```bash
+docker compose up db -d
+```
+
+Override the `DATABASE_URL` in your `.env` to point to `localhost`:
+```env
+DATABASE_URL=postgres://uptime_user:uptime_password@localhost:5432/uptime_db?sslmode=disable
+```
+
+Run the API:
 ```bash
 go run cmd/api/main.go
 ```
-*Note: Depending on your migrations setup, they will apply automatically on startup via the `postgres` package.*
 
-## API Documentation
-
-Once the app is running, interactive API docs are available at:
-[http://localhost:8080/swagger/index.html](http://localhost:8080/swagger/index.html)
-
-### Updating SWAG Docs
+### Updating Swagger Docs
 If you change the handlers or documentation comments, regenerate the Swagger specifications:
 ```bash
 swag init -d cmd/api,internal/api/handlers,internal/domain,internal/api/response --parseDependency --parseInternal
 ```
 
-## Project Structure
-
-```
-.
-├── cmd/
-│   └── api/                # Application entrypoint
-├── docs/                   # Auto-generated Swagger documentation
-├── internal/
-│   ├── api/                # HTTP handlers, middleware, and response formatting
-│   ├── config/             # Environment & configuration management
-│   ├── domain/             # Core structs and interfaces
-│   ├── logger/             # slog initialization
-│   ├── service/            # Core business logic
-│   ├── storage/            # PostgreSQL adapters and DB interactions
-│   └── worker/             # Background ping scheduler and URL checker
-├── migrations/             # SQL Up/Down migration files
-└──  docker-compose.yaml    # Infrastructure orchestration
-```
