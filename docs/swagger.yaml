@@ -40,6 +40,8 @@ definitions:
     type: object
   handlers.LoginRequest:
     properties:
+      email:
+        type: string
       password:
         type: string
     type: object
@@ -60,6 +62,11 @@ definitions:
       status:
         type: integer
     type: object
+  response.SuccessResponse:
+    properties:
+      message:
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact: {}
@@ -67,6 +74,19 @@ info:
   title: Uptime Monitor API
   version: "1.0"
 paths:
+  /healthz:
+    get:
+      description: Check if the application process is running.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.SuccessResponse'
+      summary: Liveness Probe
+      tags:
+      - Operations
   /login:
     post:
       consumes:
@@ -98,7 +118,7 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/response.ErrorResponse'
-      summary: Admin Login
+      summary: Login to application
       tags:
       - Auth
   /monitors:
@@ -296,9 +316,28 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Fetch Monitor Stats
       tags:
       - Monitors
+  /readyz:
+    get:
+      description: Check if the application is fully ready to accept traffic.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.SuccessResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Readiness Probe
+      tags:
+      - Operations
 securityDefinitions:
   BearerAuth:
     description: Type "Bearer" followed by your JWT Token.

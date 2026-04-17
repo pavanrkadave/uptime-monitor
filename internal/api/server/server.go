@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/pavanrkadave/uptime-monitor/internal/domain"
 
 	"github.com/pavanrkadave/uptime-monitor/internal/api/handlers"
 	middlewares "github.com/pavanrkadave/uptime-monitor/internal/api/middleware"
@@ -23,33 +24,44 @@ type Server struct {
 	log        *slog.Logger
 }
 
-func New(cfg *config.Config, log *slog.Logger, monitorHandler *handlers.MonitorHandler, authHandler *handlers.AuthHandler) *Server {
+func New(cfg *config.Config, log *slog.Logger, monitorHandler *handlers.MonitorHandler, authHandler *handlers.AuthHandler, healthHandler *handlers.HealthHandler) *Server {
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
-
 	r.Use(middlewares.RequestLogger(log))
+
 	authMW := middlewares.AuthMiddleware(cfg.JWTSecret, log)
 
-	// Swagger UI
+	// --- Swagger UI ---
 	r.Get("/swagger/*", httpSwagger.Handler(
 		httpSwagger.URL("/swagger/doc.json"),
 	))
+	// --- Operations Endpoints ---
+	r.Get("/healthz", healthHandler.HandleHealth)
+	r.Get("/readyz", healthHandler.HandleReadiness)
 
-	// Public Routes
+	// --- Public Routes ---
 	r.Post("/login", authHandler.HandleLogin)
 	r.Get("/monitors", monitorHandler.HandleList)
 	r.Get("/monitors/{id}", monitorHandler.HandleGetByID)
 
-	// Protected Routes
+	// --- Protected Routes ---
 	r.Group(func(r chi.Router) {
 		r.Use(authMW)
-		r.Post("/monitors", monitorHandler.HandleCreate)
-		r.Put("/monitors/{id}", monitorHandler.HandleUpdate)
-		r.Delete("/monitors/{id}", monitorHandler.HandleDelete)
-		r.Get("/monitors/{id}/stats", monitorHandler.HandleMonitorStats)
+
+		r.Group(func(r chi.Router) {
+			r.Use(middlewares.RequireRole(domain.RoleAdmin))
+			r.Post("/monitors", monitorHandler.HandleCreate)
+			r.Put("/monitors/{id}", monitorHandler.HandleUpdate)
+			r.Delete("/monitors/{id}", monitorHandler.HandleDelete)
+		})
+
+		r.Group(func(r chi.Router) {
+			r.Use(middlewares.RequireRole(domain.RoleAdmin, domain.RoleViewer))
+			r.Get("/monitors/{id}/stats", monitorHandler.HandleMonitorStats)
+		})
 	})
 
 	return &Server{

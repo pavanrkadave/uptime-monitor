@@ -1,75 +1,85 @@
 # Uptime Monitor API
 
-A modern, production-ready Go service for monitoring website uptime, calculating latency statistics, and securely managing monitor configurations. Built strictly adhering to Clean Architecture principles.
+A robust, production-ready REST API for monitoring website uptime, latency, and generating statistics. Built with Go, following Clean Architecture principles.
 
-## 🚀 Features
+## Architecture
 
-* **Background Workers:** Asynchronous, non-blocking scheduler that pings URLs at configurable intervals.
-* **Native Database Aggregations:** High-performance calculation of Uptime %, Average Latency, and P95 Latency using PostgreSQL native functions (`percentile_cont`, `FILTER`).
-* **Secure Identity & RBAC:** JWT-based authentication using Bcrypt password hashing. Auto-seeds a default Admin user on startup.
-* **Clean Architecture:** Heavily decoupled Domain, Repository, Service, and Transport (Handler) layers.
-* **Modern Telemetry:** Go 1.22+ structured logging (`slog`) with a custom Chi middleware bridge and local `tint` colorization.
-* **Auto-Generated Docs:** Fully integrated Swagger UI mapping all endpoints and expected JSON payloads.
-* **Fail-Fast Configuration:** Startup configuration validation via `.env` and struct tags.
+This project strictly follows **Clean Architecture**:
+- **Domain:** Core business models (`User`, `Monitor`, `MonitorStats`).
+- **Storage (Repository):** PostgreSQL implementation using `sql.DB` and `golang-migrate` for database migrations.
+- **Service:** Business logic layer encapsulating core operations.
+- **Transport (Handlers):** HTTP layer powered by `go-chi/chi/v5` and Swagger docs.
 
-## 🛠 Tech Stack
+## Tech Stack
 
-* **Language:** Go 1.22+
-* **Database:** PostgreSQL
-* **Router:** `go-chi/chi/v5`
-* **Migrations:** `golang-migrate/migrate`
-* **Configuration:** `caarlos0/env/v11` & `joho/godotenv`
-* **Documentation:** `swaggo/swag`
+- **Language:** Go 1.21+
+- **Database:** PostgreSQL
+- **Router:** `go-chi/chi/v5`
+- **Logging:** `log/slog` (with `lmittmann/tint` for local development)
+- **Migrations:** `golang-migrate/migrate`
+- **Documentation:** `swaggo/swag`
+- **Auth:** JWT (JSON Web Tokens) & `bcrypt` for password hashing
 
-## 📁 Project Structure
+## Features
 
-```text
-├── cmd/api/                 # Application entrypoint (main.go)
-├── docs/                    # Auto-generated Swagger documentation
-├── internal/
-│   ├── api/                 # HTTP Transport layer (Handlers, Middleware, Response formatting)
-│   ├── config/              # Environment variable loading & validation
-│   ├── domain/              # Core business entities and custom errors
-│   ├── logger/              # Slog configuration and formatting
-│   ├── service/             # Business logic layer (Use Cases)
-│   ├── storage/postgres/    # Database implementations (Repositories)
-│   └── worker/              # Background polling and scheduling
-├── migrations/              # PostgreSQL schema definitions (.sql)
-```
+- **RBAC Authentication:** Secure endpoints using JWTs with Admin/Viewer roles.
+- **Monitor CRUD:** Add, update, and manage websites to monitor.
+- **Background Worker:** Non-blocking pinger that tests monitor endpoints and logs results.
+- **Statistics Aggregation:** Real-time calculation of Uptime %, Average Latency, and P95 Latency using advanced PostgreSQL aggregates.
+- **Swagger Documentation:** Auto-generated interactive API docs (`/swagger/index.html`).
+- **Health Checks:** `/healthz` and `/readyz` endpoints for infrastructure checks.
 
-## ⚙️ Getting Started
+## Getting Started
 
 ### Prerequisites
-* Go 1.22 or higher
-* PostgreSQL 14+ running locally or via Docker
+- Go 1.21+
+- Make (optional, for automation)
+- Docker & Docker Compose (for Postgres)
 
-### 1. Configuration
-Create a `.env` file in the root of the project using the following template:
-
-```env
-ENV=development
-PORT=8080
-DATABASE_URL=postgres://uptime_user:uptime_password@localhost:5432/uptime_db?sslmode=disable
-JWT_SECRET=super_secret_local_key
-ADMIN_PASSWORD=admin
-CHECK_INTERVAL=10s
+### 1. Start the Database
+```bash
+docker-compose up -d
 ```
 
-### 2. Running the Application
-The application will automatically run pending database migrations and seed the default admin user on startup.
+### 2. Configure Environment
+Create a `.env` file referencing your database credentials and `JWT_SECRET`:
+```env
+DB_URL=postgres://postgres:postgres@localhost:5432/uptime?sslmode=disable
+JWT_SECRET=supersecret
+```
 
+### 3. Run the API
 ```bash
 go run cmd/api/main.go
 ```
+*Note: Depending on your migrations setup, they will apply automatically on startup via the `postgres` package.*
 
-### 3. Accessing the API & Documentation
-Once the server is running, you can view the fully interactive Swagger Documentation at:
+## API Documentation
+
+Once the app is running, interactive API docs are available at:
 [http://localhost:8080/swagger/index.html](http://localhost:8080/swagger/index.html)
 
-### 4. Authentication
-To access protected routes (`POST`, `PUT`, `DELETE`), use the `/login` endpoint with the default admin credentials generated on startup:
-* **Email:** `admin@example.com`
-* **Password:** *(Takes the value of ADMIN_PASSWORD from your .env file)*
+### Updating SWAG Docs
+If you change the handlers or documentation comments, regenerate the Swagger specifications:
+```bash
+swag init -d cmd/api,internal/api/handlers,internal/domain,internal/api/response --parseDependency --parseInternal
+```
 
-Copy the resulting JWT token, click the "Authorize" button in Swagger, and paste the token.
+## Project Structure
 
+```
+.
+├── cmd/
+│   └── api/                # Application entrypoint
+├── docs/                   # Auto-generated Swagger documentation
+├── internal/
+│   ├── api/                # HTTP handlers, middleware, and response formatting
+│   ├── config/             # Environment & configuration management
+│   ├── domain/             # Core structs and interfaces
+│   ├── logger/             # slog initialization
+│   ├── service/            # Core business logic
+│   ├── storage/            # PostgreSQL adapters and DB interactions
+│   └── worker/             # Background ping scheduler and URL checker
+├── migrations/             # SQL Up/Down migration files
+└──  docker-compose.yaml    # Infrastructure orchestration
+```

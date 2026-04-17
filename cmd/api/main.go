@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -85,6 +86,8 @@ func runApp(cfg *config.Config, log *slog.Logger) error {
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret, log)
 	authHandler := handlers.NewAuthHandler(authService, log)
 
+	healthHandler := handlers.NewHealthHandler(&dbChecker{db: db})
+
 	defaultAdminEmail := "admin@example.com"
 	_, err = userRepo.GetByEmail(ctx, defaultAdminEmail)
 	if err != nil {
@@ -102,7 +105,7 @@ func runApp(cfg *config.Config, log *slog.Logger) error {
 
 	// --- Setup Workers ---
 	pingScheduler := worker.New(monitorService, log)
-	apiServer := server.New(cfg, log, monitorHandler, authHandler)
+	apiServer := server.New(cfg, log, monitorHandler, authHandler, healthHandler)
 
 	// -- Create WaitGroup for background workers --
 	var wg sync.WaitGroup
@@ -129,4 +132,12 @@ func runApp(cfg *config.Config, log *slog.Logger) error {
 	wg.Wait()
 	log.Info("Application shut down successfully!")
 	return nil
+}
+
+type dbChecker struct {
+	db *sql.DB
+}
+
+func (d *dbChecker) Check(ctx context.Context) error {
+	return d.db.PingContext(ctx)
 }

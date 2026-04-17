@@ -247,6 +247,7 @@ func (h *MonitorHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 // @Failure      400 {object} response.ErrorResponse
 // @Failure      404 {object} response.ErrorResponse
 // @Failure      500 {object} response.ErrorResponse
+// @Security     BearerAuth
 // @Router       /monitors/{id}/stats [get]
 func (h *MonitorHandler) HandleMonitorStats(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
