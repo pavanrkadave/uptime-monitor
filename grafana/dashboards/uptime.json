@@ -59,6 +59,23 @@
       "type": "timeseries",
       "gridPos": {"x": 18, "y": 8, "w": 6, "h": 7},
       "targets": [{"expr": "go_memstats_alloc_bytes", "legendFormat": "Alloc Memory"}]
+    },
+    {
+      "id": 6,
+      "title": "API Container Logs",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "Loki"
+      },
+      "gridPos": {"x": 0, "y": 15, "w": 24, "h": 10},
+      "targets": [{"expr": "{container=~\"uptime-monitor-api.*|.*-api-.*\"}", "refId": "A"}],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true
+      }
     }
   ]
 }
