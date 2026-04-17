@@ -37,7 +37,7 @@ const docTemplate = `{
         },
         "/login": {
             "post": {
-                "description": "Authenticate using an admin password to receive a JWT.",
+                "description": "Logs in a user with their email and password, and returns a JWT token with their assigned RBAC role.",
                 "consumes": [
                     "application/json"
                 ],
@@ -47,7 +47,7 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Login to application",
+                "summary": "User Login",
                 "parameters": [
                     {
                         "description": "Login Credentials",
@@ -61,25 +61,25 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Successful login with JWT token",
                         "schema": {
                             "$ref": "#/definitions/handlers.LoginResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Invalid JSON payload",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Unauthorized",
+                        "description": "Invalid credentials",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
@@ -121,7 +121,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Add a new URL to the uptime monitoring system.",
+                "description": "Add a new URL to the uptime monitoring system with optional HTML keyword validation and a custom checking interval.",
                 "consumes": [
                     "application/json"
                 ],
@@ -134,7 +134,7 @@ const docTemplate = `{
                 "summary": "Create Monitor",
                 "parameters": [
                     {
-                        "description": "Monitor Details",
+                        "description": "Monitor configuration parameters including target URL, search keyword, and interval in seconds.",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -145,25 +145,25 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Created",
+                        "description": "Successfully created monitor record",
                         "schema": {
                             "$ref": "#/definitions/handlers.CreateResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Invalid JSON payload or missing URL",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Unauthorized",
+                        "description": "Unauthorized access, requires Admin or Viewer role JWT",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
@@ -223,7 +223,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update the URL of an existing monitor in the system.",
+                "description": "Overwrite the URL, keyword, or check interval of an existing monitor. Check interval defaults to 60 seconds if less than 10.",
                 "consumes": [
                     "application/json"
                 ],
@@ -237,13 +237,13 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Monitor ID",
+                        "description": "Unique ID of the monitor to update",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Updated Monitor Details",
+                        "description": "New values for monitor",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -254,31 +254,31 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Successfully updated monitor details",
                         "schema": {
                             "$ref": "#/definitions/domain.Monitor"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Malformatted request or ID",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Unauthorized",
+                        "description": "Unauthorized access",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Monitor not found",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
@@ -425,7 +425,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Creates a new admin or viewer.",
+                "description": "Creates a new admin or viewer. Must be authenticated with an Admin JWT.",
                 "consumes": [
                     "application/json"
                 ],
@@ -438,7 +438,7 @@ const docTemplate = `{
                 "summary": "Create a new user",
                 "parameters": [
                     {
-                        "description": "User Details",
+                        "description": "User Registration Details",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -449,19 +449,25 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Created",
+                        "description": "Successfully created user",
                         "schema": {
                             "$ref": "#/definitions/response.SuccessResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Invalid JSON, duplicate email, or invalid role",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - requires Admin role",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
                         }
@@ -527,13 +533,16 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "check_interval": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 60
                 },
                 "expected_keyword": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Welcome"
                 },
                 "url": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "https://google.com"
                 }
             }
         },
@@ -541,19 +550,24 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "check_interval": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 60
                 },
                 "created_at": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2025-01-01T12:00:00Z"
                 },
                 "monitor_id": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 1
                 },
                 "updated_at": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2025-01-01T12:00:00Z"
                 },
                 "url": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "https://google.com"
                 }
             }
         },
@@ -594,13 +608,16 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "check_interval": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 60
                 },
                 "expected_keyword": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Welcome"
                 },
                 "url": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "https://google.com"
                 }
             }
         },

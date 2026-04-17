@@ -38,23 +38,31 @@ definitions:
   handlers.CreateRequest:
     properties:
       check_interval:
+        example: 60
         type: integer
       expected_keyword:
+        example: Welcome
         type: string
       url:
+        example: https://google.com
         type: string
     type: object
   handlers.CreateResponse:
     properties:
       check_interval:
+        example: 60
         type: integer
       created_at:
+        example: "2025-01-01T12:00:00Z"
         type: string
       monitor_id:
+        example: 1
         type: integer
       updated_at:
+        example: "2025-01-01T12:00:00Z"
         type: string
       url:
+        example: https://google.com
         type: string
     type: object
   handlers.LoginRequest:
@@ -81,10 +89,13 @@ definitions:
   handlers.UpdateRequest:
     properties:
       check_interval:
+        example: 60
         type: integer
       expected_keyword:
+        example: Welcome
         type: string
       url:
+        example: https://google.com
         type: string
     type: object
   response.ErrorResponse:
@@ -124,7 +135,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Authenticate using an admin password to receive a JWT.
+      description: Logs in a user with their email and password, and returns a JWT
+        token with their assigned RBAC role.
       parameters:
       - description: Login Credentials
         in: body
@@ -136,22 +148,22 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Successful login with JWT token
           schema:
             $ref: '#/definitions/handlers.LoginResponse'
         "400":
-          description: Bad Request
+          description: Invalid JSON payload
           schema:
             $ref: '#/definitions/response.ErrorResponse'
         "401":
-          description: Unauthorized
+          description: Invalid credentials
           schema:
             $ref: '#/definitions/response.ErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
             $ref: '#/definitions/response.ErrorResponse'
-      summary: Login to application
+      summary: User Login
       tags:
       - Auth
   /monitors:
@@ -176,9 +188,11 @@ paths:
     post:
       consumes:
       - application/json
-      description: Add a new URL to the uptime monitoring system.
+      description: Add a new URL to the uptime monitoring system with optional HTML
+        keyword validation and a custom checking interval.
       parameters:
-      - description: Monitor Details
+      - description: Monitor configuration parameters including target URL, search
+          keyword, and interval in seconds.
         in: body
         name: request
         required: true
@@ -188,19 +202,19 @@ paths:
       - application/json
       responses:
         "201":
-          description: Created
+          description: Successfully created monitor record
           schema:
             $ref: '#/definitions/handlers.CreateResponse'
         "400":
-          description: Bad Request
+          description: Invalid JSON payload or missing URL
           schema:
             $ref: '#/definitions/response.ErrorResponse'
         "401":
-          description: Unauthorized
+          description: Unauthorized access, requires Admin or Viewer role JWT
           schema:
             $ref: '#/definitions/response.ErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
             $ref: '#/definitions/response.ErrorResponse'
       security:
@@ -280,14 +294,15 @@ paths:
     put:
       consumes:
       - application/json
-      description: Update the URL of an existing monitor in the system.
+      description: Overwrite the URL, keyword, or check interval of an existing monitor.
+        Check interval defaults to 60 seconds if less than 10.
       parameters:
-      - description: Monitor ID
+      - description: Unique ID of the monitor to update
         in: path
         name: id
         required: true
         type: integer
-      - description: Updated Monitor Details
+      - description: New values for monitor
         in: body
         name: request
         required: true
@@ -297,23 +312,23 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Successfully updated monitor details
           schema:
             $ref: '#/definitions/domain.Monitor'
         "400":
-          description: Bad Request
+          description: Malformatted request or ID
           schema:
             $ref: '#/definitions/response.ErrorResponse'
         "401":
-          description: Unauthorized
+          description: Unauthorized access
           schema:
             $ref: '#/definitions/response.ErrorResponse'
         "404":
-          description: Not Found
+          description: Monitor not found
           schema:
             $ref: '#/definitions/response.ErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
             $ref: '#/definitions/response.ErrorResponse'
       security:
@@ -373,9 +388,10 @@ paths:
     post:
       consumes:
       - application/json
-      description: Creates a new admin or viewer.
+      description: Creates a new admin or viewer. Must be authenticated with an Admin
+        JWT.
       parameters:
-      - description: User Details
+      - description: User Registration Details
         in: body
         name: request
         required: true
@@ -385,15 +401,19 @@ paths:
       - application/json
       responses:
         "201":
-          description: Created
+          description: Successfully created user
           schema:
             $ref: '#/definitions/response.SuccessResponse'
         "400":
-          description: Bad Request
+          description: Invalid JSON, duplicate email, or invalid role
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden - requires Admin role
           schema:
             $ref: '#/definitions/response.ErrorResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
             $ref: '#/definitions/response.ErrorResponse'
       security:

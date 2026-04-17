@@ -29,23 +29,23 @@ type MonitorHandler struct {
 }
 
 type CreateRequest struct {
-	URL             string `json:"url"`
-	ExpectedKeyword string `json:"expected_keyword"`
-	CheckInterval   int    `json:"check_interval"`
+	URL             string `json:"url" example:"https://google.com"`
+	ExpectedKeyword string `json:"expected_keyword" example:"Welcome"`
+	CheckInterval   int    `json:"check_interval" example:"60"`
 }
 
 type UpdateRequest struct {
-	URL             string `json:"url"`
-	ExpectedKeyword string `json:"expected_keyword"`
-	CheckInterval   int    `json:"check_interval"`
+	URL             string `json:"url" example:"https://google.com"`
+	ExpectedKeyword string `json:"expected_keyword" example:"Welcome"`
+	CheckInterval   int    `json:"check_interval" example:"60"`
 }
 
 type CreateResponse struct {
-	MonitorID     int64      `json:"monitor_id"`
-	URL           string     `json:"url"`
-	CheckInterval int        `json:"check_interval"`
-	CreatedAt     *time.Time `json:"created_at"`
-	UpdatedAt     *time.Time `json:"updated_at"`
+	MonitorID     int64      `json:"monitor_id" example:"1"`
+	URL           string     `json:"url" example:"https://google.com"`
+	CheckInterval int        `json:"check_interval" example:"60"`
+	CreatedAt     *time.Time `json:"created_at" example:"2025-01-01T12:00:00Z"`
+	UpdatedAt     *time.Time `json:"updated_at" example:"2025-01-01T12:00:00Z"`
 }
 
 func NewMonitorHandler(useCase MonitorUseCase, log *slog.Logger) *MonitorHandler {
@@ -114,15 +114,15 @@ func (h *MonitorHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 // HandleCreate decodes a JSON body {"url": "..."} and creates a new monitor.
 //
 // @Summary      Create Monitor
-// @Description  Add a new URL to the uptime monitoring system.
+// @Description  Add a new URL to the uptime monitoring system with optional HTML keyword validation and a custom checking interval.
 // @Tags         Monitors
 // @Accept       json
 // @Produce      json
-// @Param        request body CreateRequest true "Monitor Details"
-// @Success      201 {object} CreateResponse
-// @Failure      400 {object} response.ErrorResponse
-// @Failure      401 {object} response.ErrorResponse
-// @Failure      500 {object} response.ErrorResponse
+// @Param        request body CreateRequest true "Monitor configuration parameters including target URL, search keyword, and interval in seconds."
+// @Success      201 {object} CreateResponse "Successfully created monitor record"
+// @Failure      400 {object} response.ErrorResponse "Invalid JSON payload or missing URL"
+// @Failure      401 {object} response.ErrorResponse "Unauthorized access, requires Admin or Viewer role JWT"
+// @Failure      500 {object} response.ErrorResponse "Internal server error"
 // @Security     BearerAuth
 // @Router       /monitors [post]
 func (h *MonitorHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
@@ -158,17 +158,17 @@ func (h *MonitorHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 // HandleUpdate decodes a JSON body {"url": "..."} and updates a new monitor.
 //
 // @Summary      Update Monitor
-// @Description  Update the URL of an existing monitor in the system.
+// @Description  Overwrite the URL, keyword, or check interval of an existing monitor. Check interval defaults to 60 seconds if less than 10.
 // @Tags         Monitors
 // @Accept       json
 // @Produce      json
-// @Param        id      path     int  true  "Monitor ID"
-// @Param        request body UpdateRequest true "Updated Monitor Details"
-// @Success      200 {object} domain.Monitor
-// @Failure      400 {object} response.ErrorResponse
-// @Failure      401 {object} response.ErrorResponse
-// @Failure      404 {object} response.ErrorResponse
-// @Failure      500 {object} response.ErrorResponse
+// @Param        id      path     int  true  "Unique ID of the monitor to update"
+// @Param        request body UpdateRequest true "New values for monitor"
+// @Success      200 {object} domain.Monitor "Successfully updated monitor details"
+// @Failure      400 {object} response.ErrorResponse "Malformatted request or ID"
+// @Failure      401 {object} response.ErrorResponse "Unauthorized access"
+// @Failure      404 {object} response.ErrorResponse "Monitor not found"
+// @Failure      500 {object} response.ErrorResponse "Internal server error"
 // @Security     BearerAuth
 // @Router       /monitors/{id} [put]
 func (h *MonitorHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {

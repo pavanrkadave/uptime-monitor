@@ -44,18 +44,18 @@ func NewAuthHandler(useCase AuthUseCase, log *slog.Logger) *AuthHandler {
 	}
 }
 
-// HandleLogin decodes a JSON body {"email": "...", "password": "..."} and returns a JWT
+// HandleLogin authenticates a user and explicitly returns a JWT token.
 //
-// @Summary      Login to application
-// @Description  Authenticate using an admin password to receive a JWT.
+// @Summary      User Login
+// @Description  Logs in a user with their email and password, and returns a JWT token with their assigned RBAC role.
 // @Tags         Auth
 // @Accept       json
 // @Produce      json
 // @Param        request body LoginRequest true "Login Credentials"
-// @Success      200 {object} LoginResponse
-// @Failure      400 {object} response.ErrorResponse
-// @Failure      401 {object} response.ErrorResponse
-// @Failure      500 {object} response.ErrorResponse
+// @Success      200 {object} LoginResponse "Successful login with JWT token"
+// @Failure      400 {object} response.ErrorResponse "Invalid JSON payload"
+// @Failure      401 {object} response.ErrorResponse "Invalid credentials"
+// @Failure      500 {object} response.ErrorResponse "Internal server error"
 // @Router       /login [post]
 func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
@@ -89,14 +89,15 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 // HandleRegister creates a new user. Only Admins should be able to reach this.
 //
 // @Summary      Create a new user
-// @Description  Creates a new admin or viewer.
+// @Description  Creates a new admin or viewer. Must be authenticated with an Admin JWT.
 // @Tags         Auth
 // @Accept       json
 // @Produce      json
-// @Param        request body RegisterRequest true "User Details"
-// @Success      201 {object} response.SuccessResponse
-// @Failure      400 {object} response.ErrorResponse
-// @Failure      500 {object} response.ErrorResponse
+// @Param        request body RegisterRequest true "User Registration Details"
+// @Success      201 {object} response.SuccessResponse "Successfully created user"
+// @Failure      400 {object} response.ErrorResponse "Invalid JSON, duplicate email, or invalid role"
+// @Failure      403 {object} response.ErrorResponse "Forbidden - requires Admin role"
+// @Failure      500 {object} response.ErrorResponse "Internal server error"
 // @Security     BearerAuth
 // @Router       /register [post]
 func (h *AuthHandler) HandleRegister(w http.ResponseWriter, r *http.Request) {
