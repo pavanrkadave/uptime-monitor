@@ -468,7 +468,14 @@
         "domain.Monitor": {
             "type": "object",
             "properties": {
+                "check_interval": {
+                    "description": "interval in seconds",
+                    "type": "integer"
+                },
                 "created_at": {
+                    "type": "string"
+                },
+                "expected_keyword": {
                     "type": "string"
                 },
                 "id": {
@@ -513,6 +520,12 @@
         "handlers.CreateRequest": {
             "type": "object",
             "properties": {
+                "check_interval": {
+                    "type": "integer"
+                },
+                "expected_keyword": {
+                    "type": "string"
+                },
                 "url": {
                     "type": "string"
                 }
@@ -521,6 +534,9 @@
         "handlers.CreateResponse": {
             "type": "object",
             "properties": {
+                "check_interval": {
+                    "type": "integer"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -571,6 +587,12 @@
         "handlers.UpdateRequest": {
             "type": "object",
             "properties": {
+                "check_interval": {
+                    "type": "integer"
+                },
+                "expected_keyword": {
+                    "type": "string"
+                },
                 "url": {
                     "type": "string"
                 }

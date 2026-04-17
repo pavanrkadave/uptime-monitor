@@ -17,8 +17,8 @@ import (
 type MonitorUseCase interface {
 	ListAll(ctx context.Context) ([]*domain.Monitor, error)
 	GetByID(ctx context.Context, id int64) (*domain.Monitor, error)
-	Create(ctx context.Context, url, expectedKeyword string) (*domain.Monitor, error)
-	Update(ctx context.Context, id int64, url, expectedKeyword string) (*domain.Monitor, error)
+	Create(ctx context.Context, url, expectedKeyword string, checkInterval int) (*domain.Monitor, error)
+	Update(ctx context.Context, id int64, url, expectedKeyword string, checkInterval int) (*domain.Monitor, error)
 	Delete(ctx context.Context, id int64) error
 	GetStats(ctx context.Context, monitorID int64) (*domain.MonitorStats, error)
 }
@@ -31,18 +31,21 @@ type MonitorHandler struct {
 type CreateRequest struct {
 	URL             string `json:"url"`
 	ExpectedKeyword string `json:"expected_keyword"`
+	CheckInterval   int    `json:"check_interval"`
 }
 
 type UpdateRequest struct {
 	URL             string `json:"url"`
 	ExpectedKeyword string `json:"expected_keyword"`
+	CheckInterval   int    `json:"check_interval"`
 }
 
 type CreateResponse struct {
-	MonitorID int64      `json:"monitor_id"`
-	URL       string     `json:"url"`
-	CreatedAt *time.Time `json:"created_at"`
-	UpdatedAt *time.Time `json:"updated_at"`
+	MonitorID     int64      `json:"monitor_id"`
+	URL           string     `json:"url"`
+	CheckInterval int        `json:"check_interval"`
+	CreatedAt     *time.Time `json:"created_at"`
+	UpdatedAt     *time.Time `json:"updated_at"`
 }
 
 func NewMonitorHandler(useCase MonitorUseCase, log *slog.Logger) *MonitorHandler {
@@ -125,13 +128,17 @@ func (h *MonitorHandler) HandleGetByID(w http.ResponseWriter, r *http.Request) {
 func (h *MonitorHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	var request CreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		// If the JSON is malformed, send a 400 Bad Request
 		h.log.Error("failed decode create request", slog.Any("error", err))
 		response.Error(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 
-	monitor, err := h.useCase.Create(r.Context(), request.URL, request.ExpectedKeyword)
+	// Provide a default check interval if none is provided or it's invalid
+	if request.CheckInterval < 10 {
+		request.CheckInterval = 60
+	}
+
+	monitor, err := h.useCase.Create(r.Context(), request.URL, request.ExpectedKeyword, request.CheckInterval)
 	if err != nil {
 		h.log.Error("failed create new monitor", slog.Any("error", err))
 		response.Error(w, http.StatusInternalServerError, err.Error())
@@ -139,10 +146,11 @@ func (h *MonitorHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	monitorResponse := CreateResponse{
-		MonitorID: monitor.ID,
-		URL:       monitor.URL,
-		CreatedAt: monitor.CreatedAt,
-		UpdatedAt: monitor.UpdatedAt,
+		MonitorID:     monitor.ID,
+		URL:           monitor.URL,
+		CheckInterval: monitor.CheckInterval,
+		CreatedAt:     monitor.CreatedAt,
+		UpdatedAt:     monitor.UpdatedAt,
 	}
 	response.JSON(w, http.StatusCreated, monitorResponse)
 }
@@ -178,7 +186,11 @@ func (h *MonitorHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updatedMonitor, err := h.useCase.Update(r.Context(), id, request.URL, request.ExpectedKeyword)
+	if request.CheckInterval < 10 {
+		request.CheckInterval = 60
+	}
+
+	updatedMonitor, err := h.useCase.Update(r.Context(), id, request.URL, request.ExpectedKeyword, request.CheckInterval)
 	if err != nil {
 		if errors.Is(err, domain.ErrMonitorNotFound) {
 			h.log.Error("failed find monitor", slog.Any("error", err))

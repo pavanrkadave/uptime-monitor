@@ -19,27 +19,19 @@ func NewMonitorRepository(db *sql.DB) *MonitorRepository {
 	}
 }
 
-func (m *MonitorRepository) ListAll(ctx context.Context) ([]*domain.Monitor, error) {
-	query := `SELECT id, url, expected_keyword, created_at, updated_at FROM monitors ORDER BY id`
+func (r *MonitorRepository) ListAll(ctx context.Context) ([]*domain.Monitor, error) {
+	query := `SELECT id, url, expected_keyword, check_interval, created_at, updated_at FROM monitors ORDER BY id ASC`
 
-	rows, err := m.db.QueryContext(ctx, query)
+	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
-	defer func(rows *sql.Rows) {
-		_ = rows.Close()
-	}(rows)
+	defer rows.Close()
 
-	monitors := make([]*domain.Monitor, 0)
+	var monitors []*domain.Monitor
 	for rows.Next() {
 		var monitor domain.Monitor
-		if err := rows.Scan(
-			&monitor.ID,
-			&monitor.URL,
-			&monitor.ExpectedKeyword,
-			&monitor.CreatedAt,
-			&monitor.UpdatedAt,
-		); err != nil {
+		if err := rows.Scan(&monitor.ID, &monitor.URL, &monitor.ExpectedKeyword, &monitor.CheckInterval, &monitor.CreatedAt, &monitor.UpdatedAt); err != nil {
 			return nil, err
 		}
 		monitors = append(monitors, &monitor)
@@ -50,14 +42,15 @@ func (m *MonitorRepository) ListAll(ctx context.Context) ([]*domain.Monitor, err
 	return monitors, nil
 }
 
-func (m *MonitorRepository) GetByID(ctx context.Context, ID int64) (*domain.Monitor, error) {
-	query := `SELECT id, url,expected_keyword, created_at, updated_at FROM monitors WHERE id = $1`
+func (r *MonitorRepository) GetByID(ctx context.Context, id int64) (*domain.Monitor, error) {
+	query := `SELECT id, url, expected_keyword, check_interval, created_at, updated_at FROM monitors WHERE id = $1`
 
 	var monitor domain.Monitor
-	err := m.db.QueryRowContext(ctx, query, ID).Scan(
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&monitor.ID,
 		&monitor.URL,
 		&monitor.ExpectedKeyword,
+		&monitor.CheckInterval,
 		&monitor.CreatedAt,
 		&monitor.UpdatedAt,
 	)
@@ -70,38 +63,44 @@ func (m *MonitorRepository) GetByID(ctx context.Context, ID int64) (*domain.Moni
 	return &monitor, nil
 }
 
-func (m *MonitorRepository) Create(ctx context.Context, monitor domain.Monitor) (*domain.Monitor, error) {
+func (r *MonitorRepository) Create(ctx context.Context, monitor domain.Monitor) (*domain.Monitor, error) {
 	query := `
-             INSERT INTO monitors (url,expected_keyword, created_at, updated_at)
-             VALUES ($1, $2, NOW(), NOW())
-             RETURNING id,url,expected_keyword, created_at , updated_at`
+		INSERT INTO monitors (url, expected_keyword, check_interval, created_at, updated_at)
+		VALUES ($1, $2, $3, NOW(), NOW())
+		RETURNING id, url, expected_keyword, check_interval, created_at, updated_at
+	`
 
-	err := m.db.QueryRowContext(ctx, query, monitor.URL).Scan(
-		&monitor.ID,
-		&monitor.URL,
-		&monitor.ExpectedKeyword,
-		&monitor.CreatedAt,
-		&monitor.UpdatedAt,
+	var m domain.Monitor
+	err := r.db.QueryRowContext(ctx, query, monitor.URL, monitor.ExpectedKeyword, monitor.CheckInterval).Scan(
+		&m.ID,
+		&m.URL,
+		&m.ExpectedKeyword,
+		&m.CheckInterval,
+		&m.CreatedAt,
+		&m.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
 	}
-	return &monitor, nil
+	return &m, nil
 }
 
-func (m *MonitorRepository) Update(ctx context.Context, id int64, url, expectedKeyword string) (*domain.Monitor, error) {
-	query := `UPDATE monitors
-			  SET url = $1, expected_keyword = $2, updated_at = NOW()
-			  WHERE id = $3
-			  RETURNING id, url,expected_keyword, created_at, updated_at;`
+func (r *MonitorRepository) Update(ctx context.Context, id int64, url, expectedKeyword string, checkInterval int) (*domain.Monitor, error) {
+	query := `
+		UPDATE monitors
+		SET url = $1, expected_keyword = $2, check_interval = $3, updated_at = NOW()
+		WHERE id = $4
+		RETURNING id, url, expected_keyword, check_interval, created_at, updated_at
+	`
 
-	var updatedMonitor domain.Monitor
-	err := m.db.QueryRowContext(ctx, query, url, expectedKeyword, id).Scan(
-		&updatedMonitor.ID,
-		&updatedMonitor.URL,
-		&updatedMonitor.ExpectedKeyword,
-		&updatedMonitor.CreatedAt,
-		&updatedMonitor.UpdatedAt,
+	var m domain.Monitor
+	err := r.db.QueryRowContext(ctx, query, url, expectedKeyword, checkInterval, id).Scan(
+		&m.ID,
+		&m.URL,
+		&m.ExpectedKeyword,
+		&m.CheckInterval,
+		&m.CreatedAt,
+		&m.UpdatedAt,
 	)
 
 	if err != nil {
@@ -110,7 +109,7 @@ func (m *MonitorRepository) Update(ctx context.Context, id int64, url, expectedK
 		}
 		return nil, err
 	}
-	return &updatedMonitor, nil
+	return &m, nil
 }
 
 func (m *MonitorRepository) Delete(ctx context.Context, ID int64) error {

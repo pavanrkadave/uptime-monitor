@@ -1,0 +1,1 @@
+ALTER TABLE monitors ADD COLUMN expected_keyword TEXT NOT NULL DEFAULT '';

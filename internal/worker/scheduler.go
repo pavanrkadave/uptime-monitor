@@ -43,22 +43,27 @@ type MonitorProvider interface {
 }
 
 type Scheduler struct {
-	provider MonitorProvider
-	log      *slog.Logger
+	provider   MonitorProvider
+	log        *slog.Logger
+	lastChecks map[int64]time.Time
 }
 
 func New(provider MonitorProvider, log *slog.Logger) *Scheduler {
 	return &Scheduler{
-		provider: provider,
-		log:      log.With("component", "monitor-scheduler"),
+		provider:   provider,
+		log:        log.With("component", "monitor-scheduler"),
+		lastChecks: make(map[int64]time.Time),
 	}
 }
 
 func (s *Scheduler) Start(ctx context.Context, interval time.Duration) {
-	ticker := time.NewTicker(interval)
+	// Instead of interval from config, we override with a tight 5 second loop, but config defines min global loop.
+	// Actually let's use 5 second tick
+	tightInterval := 5 * time.Second
+	ticker := time.NewTicker(tightInterval)
 	defer ticker.Stop()
 
-	s.log.Info("Starting background worker ", slog.Any("interval", interval))
+	s.log.Info("Starting background worker ", slog.Any("tick_interval", tightInterval))
 
 	for {
 		select {
@@ -79,14 +84,30 @@ func (s *Scheduler) runCheckCycle(ctx context.Context) {
 	}
 
 	if len(monitors) == 0 {
-		s.log.Info("Nothing to monitor, sleeping until next check...")
 		return
 	}
 
-	s.log.Info("Worker waking up: checking monitors concurrently.", slog.Any("monitors", len(monitors)))
-	var wg sync.WaitGroup
+	now := time.Now()
+	var monitorsToCheck []*domain.Monitor
 
 	for _, monitor := range monitors {
+		lastChecked, exists := s.lastChecks[monitor.ID]
+		intervalDuration := time.Duration(monitor.CheckInterval) * time.Second
+
+		if !exists || now.Sub(lastChecked) >= intervalDuration {
+			monitorsToCheck = append(monitorsToCheck, monitor)
+			s.lastChecks[monitor.ID] = now
+		}
+	}
+
+	if len(monitorsToCheck) == 0 {
+		return
+	}
+
+	s.log.Info("Worker waking up: checking monitors concurrently.", slog.Any("monitors", len(monitorsToCheck)))
+	var wg sync.WaitGroup
+
+	for _, monitor := range monitorsToCheck {
 		wg.Add(1)
 
 		go func(monitor *domain.Monitor) {

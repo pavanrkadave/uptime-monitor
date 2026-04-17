@@ -18,6 +18,7 @@ type Monitor struct {
 	ID              int64      `json:"id"`
 	URL             string     `json:"url"`
 	ExpectedKeyword string     `json:"expected_keyword"`
+	CheckInterval   int        `json:"check_interval"` // interval in seconds
 	CreatedAt       *time.Time `json:"created_at"`
 	UpdatedAt       *time.Time `json:"updated_at"`
 }
@@ -26,6 +27,10 @@ func (m Monitor) Validate() error {
 	trimmedURL := strings.TrimSpace(m.URL)
 	if trimmedURL == "" {
 		return ErrEmptyURL
+	}
+
+	if m.CheckInterval < 10 {
+		return errors.New("check_interval must be at least 10 seconds")
 	}
 
 	parsedURL, err := url.ParseRequestURI(trimmedURL)

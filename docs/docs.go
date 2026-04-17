@@ -474,7 +474,14 @@ const docTemplate = `{
         "domain.Monitor": {
             "type": "object",
             "properties": {
+                "check_interval": {
+                    "description": "interval in seconds",
+                    "type": "integer"
+                },
                 "created_at": {
+                    "type": "string"
+                },
+                "expected_keyword": {
                     "type": "string"
                 },
                 "id": {
@@ -519,6 +526,12 @@ const docTemplate = `{
         "handlers.CreateRequest": {
             "type": "object",
             "properties": {
+                "check_interval": {
+                    "type": "integer"
+                },
+                "expected_keyword": {
+                    "type": "string"
+                },
                 "url": {
                     "type": "string"
                 }
@@ -527,6 +540,9 @@ const docTemplate = `{
         "handlers.CreateResponse": {
             "type": "object",
             "properties": {
+                "check_interval": {
+                    "type": "integer"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -577,6 +593,12 @@ const docTemplate = `{
         "handlers.UpdateRequest": {
             "type": "object",
             "properties": {
+                "check_interval": {
+                    "type": "integer"
+                },
+                "expected_keyword": {
+                    "type": "string"
+                },
                 "url": {
                     "type": "string"
                 }

@@ -2,7 +2,12 @@ basePath: /
 definitions:
   domain.Monitor:
     properties:
+      check_interval:
+        description: interval in seconds
+        type: integer
       created_at:
+        type: string
+      expected_keyword:
         type: string
       id:
         type: integer
@@ -32,11 +37,17 @@ definitions:
     - RoleViewer
   handlers.CreateRequest:
     properties:
+      check_interval:
+        type: integer
+      expected_keyword:
+        type: string
       url:
         type: string
     type: object
   handlers.CreateResponse:
     properties:
+      check_interval:
+        type: integer
       created_at:
         type: string
       monitor_id:
@@ -69,6 +80,10 @@ definitions:
     type: object
   handlers.UpdateRequest:
     properties:
+      check_interval:
+        type: integer
+      expected_keyword:
+        type: string
       url:
         type: string
     type: object

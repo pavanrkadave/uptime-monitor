@@ -1,0 +1,1 @@
+ALTER TABLE monitors ADD COLUMN check_interval INTEGER NOT NULL DEFAULT 60;
