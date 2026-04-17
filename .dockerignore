@@ -24,8 +24,13 @@ vendor/
 .env.local
 .env.*.local
 
-# Dockerfiles
-Dockerfile
-docker-compose.yml
-docker-compose.*.yml
-.dockerignore
+# External Services Configs
+prometheus/
+grafana/
+promtail/
+Caddyfile
+*.pem
+
+# Copilot & AI
+.copilot_instructions.md
+# Add any other AI files you created

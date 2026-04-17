@@ -7,11 +7,12 @@ import (
 )
 
 type PingResult struct {
-	URL          string
-	IsUp         bool
-	StatusCode   int
-	Duration     time.Duration
-	ErrorMessage string
+	URL           string
+	IsUp          bool
+	StatusCode    int
+	Duration      time.Duration
+	ErrorMessage  string
+	TLSCertExpiry *time.Time
 }
 
 func PingSite(ctx context.Context, url string) PingResult {
@@ -46,11 +47,17 @@ func PingSite(ctx context.Context, url string) PingResult {
 	}
 	defer response.Body.Close()
 
+	var certExpiry *time.Time
+	if response.TLS != nil && len(response.TLS.PeerCertificates) > 0 {
+		certExpiry = new(response.TLS.PeerCertificates[0].NotAfter)
+	}
+
 	isUp := response.StatusCode >= 200 && response.StatusCode < 400
 	return PingResult{
-		URL:        url,
-		IsUp:       isUp,
-		StatusCode: response.StatusCode,
-		Duration:   duration,
+		URL:           url,
+		IsUp:          isUp,
+		StatusCode:    response.StatusCode,
+		Duration:      duration,
+		TLSCertExpiry: certExpiry,
 	}
 }

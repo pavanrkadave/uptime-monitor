@@ -27,6 +27,14 @@ var (
 			Buckets: []float64{0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
 		},
 		[]string{"url"})
+
+	tlsCertExpiryGauge = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "uptime_monitor_cert_expiry_timestamp_seconds",
+			Help: "The UNIX timestamp of the TLS certificate expiration date",
+		},
+		[]string{"url"},
+	)
 )
 
 type MonitorProvider interface {
@@ -96,6 +104,10 @@ func (s *Scheduler) runCheckCycle(ctx context.Context) {
 
 			monitorUpGauge.WithLabelValues(monitor.URL).Set(gaugeValue)
 			monitorLatency.WithLabelValues(monitor.URL).Observe(result.Duration.Seconds())
+
+			if result.TLSCertExpiry != nil {
+				tlsCertExpiryGauge.WithLabelValues(monitor.URL).Set(float64(result.TLSCertExpiry.Unix()))
+			}
 
 			dbCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancel()

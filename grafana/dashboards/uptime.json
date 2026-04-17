@@ -76,6 +76,35 @@
         "showCommonLabels": false,
         "wrapLogMessage": true
       }
+    },
+    {
+      "id": 7,
+      "title": "TLS Certificate Days Until Expiry",
+      "type": "stat",
+      "gridPos": {"x": 0, "y": 25, "w": 24, "h": 5},
+      "targets": [{"expr": "(uptime_monitor_cert_expiry_timestamp_seconds - time()) / 86400", "legendFormat": "{{url}}"}],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 7 },
+              { "color": "green", "value": 14 }
+            ]
+          },
+          "unit": "d"
+        }
+      }
     }
   ]
 }
