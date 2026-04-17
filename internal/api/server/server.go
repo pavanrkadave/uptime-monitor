@@ -49,6 +49,7 @@ func New(cfg *config.Config, log *slog.Logger, monitorHandler *handlers.MonitorH
 	r.Post("/login", authHandler.HandleLogin)
 	r.Get("/monitors", monitorHandler.HandleList)
 	r.Get("/monitors/{id}", monitorHandler.HandleGetByID)
+	r.Get("/monitors/{id}/stats", monitorHandler.HandleMonitorStats)
 
 	// --- Protected Routes ---
 	r.Group(func(r chi.Router) {
@@ -57,14 +58,13 @@ func New(cfg *config.Config, log *slog.Logger, monitorHandler *handlers.MonitorH
 		r.Group(func(r chi.Router) {
 			r.Use(middlewares.RequireRole(domain.RoleAdmin))
 			r.Post("/register", authHandler.HandleRegister)
-			r.Post("/monitors", monitorHandler.HandleCreate)
-			r.Put("/monitors/{id}", monitorHandler.HandleUpdate)
 			r.Delete("/monitors/{id}", monitorHandler.HandleDelete)
 		})
 
 		r.Group(func(r chi.Router) {
 			r.Use(middlewares.RequireRole(domain.RoleAdmin, domain.RoleViewer))
-			r.Get("/monitors/{id}/stats", monitorHandler.HandleMonitorStats)
+			r.Post("/monitors", monitorHandler.HandleCreate)
+			r.Put("/monitors/{id}", monitorHandler.HandleUpdate)
 		})
 	})
 

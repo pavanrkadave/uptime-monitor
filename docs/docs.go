@@ -347,11 +347,6 @@ const docTemplate = `{
         },
         "/monitors/{id}/stats": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Retrieve stats for a monitored URL using its unique ID.",
                 "produces": [
                     "application/json"
