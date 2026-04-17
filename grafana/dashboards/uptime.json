@@ -8,7 +8,7 @@
       "id": 1,
       "title": "Website Uptime Status (1 = UP, 0 = DOWN)",
       "type": "stat",
-      "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+      "gridPos": {"x": 0, "y": 0, "w": 12, "h": 6},
       "targets": [{"expr": "uptime_monitor_up", "legendFormat": "{{url}}"}],
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] }
@@ -30,17 +30,27 @@
       "id": 2,
       "title": "Avg Ping Latency (seconds)",
       "type": "timeseries",
-      "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+      "gridPos": {"x": 12, "y": 0, "w": 12, "h": 6},
       "targets": [{"expr": "rate(uptime_monitor_response_duration_seconds_sum[1m]) / rate(uptime_monitor_response_duration_seconds_count[1m])", "legendFormat": "{{url}}"}],
       "options": {
         "legend": { "displayMode": "table", "placement": "right" }
       }
     },
     {
+      "id": 8,
+      "title": "Total Checks Performed (Per Monitor)",
+      "type": "barchart",
+      "gridPos": {"x": 0, "y": 6, "w": 24, "h": 6},
+      "targets": [{"expr": "uptime_monitor_response_duration_seconds_count", "legendFormat": "{{url}}"}],
+      "options": {
+        "legend": { "displayMode": "list", "placement": "right" }
+      }
+    },
+    {
       "id": 3,
       "title": "API Request Rate (per sec)",
       "type": "timeseries",
-      "gridPos": {"x": 0, "y": 8, "w": 12, "h": 7},
+      "gridPos": {"x": 0, "y": 12, "w": 12, "h": 6},
       "targets": [{"expr": "sum(rate(http_requests_total[1m])) by (method, path, status)", "legendFormat": "{{method}} {{path}} ({{status}})"}],
       "options": {
         "legend": { "displayMode": "list", "placement": "bottom" }
@@ -48,17 +58,35 @@
     },
     {
       "id": 4,
-      "title": "Go Goroutines Count",
+      "title": "API Server CPU Usage",
       "type": "timeseries",
-      "gridPos": {"x": 12, "y": 8, "w": 6, "h": 7},
-      "targets": [{"expr": "go_goroutines", "legendFormat": "Goroutines"}]
+      "gridPos": {"x": 12, "y": 12, "w": 6, "h": 6},
+      "targets": [{"expr": "rate(process_cpu_seconds_total[1m]) * 100", "legendFormat": "CPU %"}]
     },
     {
       "id": 5,
-      "title": "Go Memory Allocated (Bytes)",
+      "title": "Go Memory & Goroutines",
       "type": "timeseries",
-      "gridPos": {"x": 18, "y": 8, "w": 6, "h": 7},
-      "targets": [{"expr": "go_memstats_alloc_bytes", "legendFormat": "Alloc Memory"}]
+      "gridPos": {"x": 18, "y": 12, "w": 6, "h": 6},
+      "targets": [
+        {"expr": "go_memstats_alloc_bytes", "legendFormat": "Alloc Memory (Bytes)"},
+        {"expr": "go_goroutines", "legendFormat": "Goroutines"}
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Database Disk Usage",
+      "type": "stat",
+      "gridPos": {"x": 18, "y": 18, "w": 6, "h": 4},
+      "targets": [{"expr": "uptime_monitor_db_size_bytes", "legendFormat": "DB Size"}],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "decbytes"
+        }
+      }
     },
     {
       "id": 6,
@@ -68,7 +96,7 @@
         "type": "loki",
         "uid": "Loki"
       },
-      "gridPos": {"x": 0, "y": 15, "w": 24, "h": 10},
+      "gridPos": {"x": 0, "y": 22, "w": 24, "h": 8},
       "targets": [{"expr": "{container=~\"uptime-monitor-api.*|.*-api-.*\"}", "refId": "A"}],
       "options": {
         "showTime": true,
@@ -81,7 +109,7 @@
       "id": 7,
       "title": "TLS Certificate Days Until Expiry",
       "type": "stat",
-      "gridPos": {"x": 0, "y": 25, "w": 24, "h": 5},
+      "gridPos": {"x": 0, "y": 30, "w": 24, "h": 5},
       "targets": [{"expr": "(uptime_monitor_cert_expiry_timestamp_seconds - time()) / 86400", "legendFormat": "{{url}}"}],
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },

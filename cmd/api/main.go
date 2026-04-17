@@ -10,6 +10,10 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	_ "github.com/lib/pq"
 	"github.com/pavanrkadave/uptime-monitor/internal/api/handlers"
@@ -25,6 +29,13 @@ import (
 const (
 	ApplicationSuccess = iota
 	ApplicationError
+)
+
+var (
+	dbSizeGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "uptime_monitor_db_size_bytes",
+		Help: "The current size of the PostgreSQL database in bytes",
+	})
 )
 
 // @title 			Uptime Monitor API
@@ -111,6 +122,13 @@ func runApp(cfg *config.Config, log *slog.Logger) error {
 	// -- Create WaitGroup for background workers --
 	var wg sync.WaitGroup
 
+	// --- Start DB Size Metrics Collector ---
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		collectDBMetrics(ctx, db, log)
+	}()
+
 	// --- Start PingScheduler ---
 	wg.Add(1)
 	go func() {
@@ -141,4 +159,25 @@ type dbChecker struct {
 
 func (d *dbChecker) Check(ctx context.Context) error {
 	return d.db.PingContext(ctx)
+}
+
+func collectDBMetrics(ctx context.Context, db *sql.DB, log *slog.Logger) {
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
+
+	// Wait for the first tick
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			var size int64
+			err := db.QueryRowContext(ctx, "SELECT pg_database_size(current_database())").Scan(&size)
+			if err != nil {
+				log.Warn("Failed to retrieve database size metric", slog.Any("error", err))
+				continue
+			}
+			dbSizeGauge.Set(float64(size))
+		}
+	}
 }
