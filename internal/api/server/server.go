@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/pavanrkadave/uptime-monitor/internal/domain"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/pavanrkadave/uptime-monitor/internal/api/handlers"
 	middlewares "github.com/pavanrkadave/uptime-monitor/internal/api/middleware"
@@ -30,6 +31,7 @@ func New(cfg *config.Config, log *slog.Logger, monitorHandler *handlers.MonitorH
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
+	r.Use(middlewares.MetricsMiddleware())
 	r.Use(middlewares.RequestLogger(log))
 
 	authMW := middlewares.AuthMiddleware(cfg.JWTSecret, log)
@@ -41,6 +43,7 @@ func New(cfg *config.Config, log *slog.Logger, monitorHandler *handlers.MonitorH
 	// --- Operations Endpoints ---
 	r.Get("/healthz", healthHandler.HandleHealth)
 	r.Get("/readyz", healthHandler.HandleReadiness)
+	r.Handle("/metrics", promhttp.Handler())
 
 	// --- Public Routes ---
 	r.Post("/login", authHandler.HandleLogin)
@@ -53,6 +56,7 @@ func New(cfg *config.Config, log *slog.Logger, monitorHandler *handlers.MonitorH
 
 		r.Group(func(r chi.Router) {
 			r.Use(middlewares.RequireRole(domain.RoleAdmin))
+			r.Post("/register", authHandler.HandleRegister)
 			r.Post("/monitors", monitorHandler.HandleCreate)
 			r.Put("/monitors/{id}", monitorHandler.HandleUpdate)
 			r.Delete("/monitors/{id}", monitorHandler.HandleDelete)

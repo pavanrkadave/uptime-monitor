@@ -22,6 +22,14 @@ definitions:
       uptime_percentage:
         type: number
     type: object
+  domain.Role:
+    enum:
+    - admin
+    - viewer
+    type: string
+    x-enum-varnames:
+    - RoleAdmin
+    - RoleViewer
   handlers.CreateRequest:
     properties:
       url:
@@ -50,6 +58,15 @@ definitions:
       token:
         type: string
     type: object
+  handlers.RegisterRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+      role:
+        $ref: '#/definitions/domain.Role'
+    type: object
   handlers.UpdateRequest:
     properties:
       url:
@@ -64,6 +81,7 @@ definitions:
     type: object
   response.SuccessResponse:
     properties:
+      data: {}
       message:
         type: string
     type: object
@@ -338,6 +356,38 @@ paths:
       summary: Readiness Probe
       tags:
       - Operations
+  /register:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new admin or viewer.
+      parameters:
+      - description: User Details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new user
+      tags:
+      - Auth
 securityDefinitions:
   BearerAuth:
     description: Type "Bearer" followed by your JWT Token.

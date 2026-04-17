@@ -7,6 +7,26 @@ import (
 	"time"
 
 	"github.com/pavanrkadave/uptime-monitor/internal/domain"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+)
+
+var (
+	monitorUpGauge = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "uptime_monitor_up",
+			Help: "1 if the monitored website is up, 0 if it is down",
+		},
+		[]string{"url"},
+	)
+
+	monitorLatency = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "uptime_monitor_response_duration_seconds",
+			Help:    "Response duration of monitored websites in seconds",
+			Buckets: []float64{0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
+		},
+		[]string{"url"})
 )
 
 type MonitorProvider interface {
@@ -66,11 +86,16 @@ func (s *Scheduler) runCheckCycle(ctx context.Context) {
 
 			result := PingSite(ctx, monitor.URL)
 
+			gaugeValue := 0.0
 			if result.IsUp {
+				gaugeValue = 1.0
 				s.log.Info("Link is UP ✅", slog.Any("url", result.URL), slog.Any("status_code", result.StatusCode), slog.Any("duration", result.Duration.Milliseconds()))
 			} else {
 				s.log.Info("Link is DOWN ❌", slog.Any("url", result.URL), slog.String("error", result.ErrorMessage))
 			}
+
+			monitorUpGauge.WithLabelValues(monitor.URL).Set(gaugeValue)
+			monitorLatency.WithLabelValues(monitor.URL).Observe(result.Duration.Seconds())
 
 			dbCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancel()
