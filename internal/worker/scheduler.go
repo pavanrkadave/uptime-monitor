@@ -92,7 +92,7 @@ func (s *Scheduler) runCheckCycle(ctx context.Context) {
 		go func(monitor *domain.Monitor) {
 			defer wg.Done()
 
-			result := PingSite(ctx, monitor.URL)
+			result := PingSite(ctx, monitor.URL, monitor.ExpectedKeyword)
 
 			gaugeValue := 0.0
 			if result.IsUp {

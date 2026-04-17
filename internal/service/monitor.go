@@ -12,7 +12,7 @@ type MonitorStore interface {
 	ListAll(ctx context.Context) ([]*domain.Monitor, error)
 	GetByID(ctx context.Context, ID int64) (*domain.Monitor, error)
 	Create(ctx context.Context, monitor domain.Monitor) (*domain.Monitor, error)
-	Update(ctx context.Context, monitor domain.Monitor) (*domain.Monitor, error)
+	Update(ctx context.Context, id int64, url, expectedKeyword string) (*domain.Monitor, error)
 	Delete(ctx context.Context, ID int64) error
 	SavePingResult(ctx context.Context, monitorID int64, isUp bool, statusCode int, duration time.Duration, errMsg string) error
 	GetStats(ctx context.Context, monitorID int64) (*domain.MonitorStats, error)
@@ -40,10 +40,11 @@ func (m *MonitorService) GetByID(ctx context.Context, id int64) (*domain.Monitor
 	return m.store.GetByID(ctx, id)
 }
 
-func (m *MonitorService) Create(ctx context.Context, url string) (*domain.Monitor, error) {
+func (m *MonitorService) Create(ctx context.Context, url, expectedKeyword string) (*domain.Monitor, error) {
 	m.log.Info("creating monitor", slog.String("url", url))
 	monitorToSave := domain.Monitor{
-		URL: url,
+		URL:             url,
+		ExpectedKeyword: expectedKeyword,
 	}
 
 	if err := monitorToSave.Validate(); err != nil {
@@ -54,11 +55,12 @@ func (m *MonitorService) Create(ctx context.Context, url string) (*domain.Monito
 	return m.store.Create(ctx, monitorToSave)
 }
 
-func (m *MonitorService) Update(ctx context.Context, id int64, url string) (*domain.Monitor, error) {
+func (m *MonitorService) Update(ctx context.Context, id int64, url, expectedKeyword string) (*domain.Monitor, error) {
 	m.log.Info("updating monitor", slog.Int64("id", id))
 	monitorToUpdate := domain.Monitor{
-		ID:  id,
-		URL: url,
+		ID:              id,
+		URL:             url,
+		ExpectedKeyword: expectedKeyword,
 	}
 
 	if err := monitorToUpdate.Validate(); err != nil {
@@ -66,7 +68,7 @@ func (m *MonitorService) Update(ctx context.Context, id int64, url string) (*dom
 		return nil, err
 	}
 
-	return m.store.Update(ctx, monitorToUpdate)
+	return m.store.Update(ctx, monitorToUpdate.ID, monitorToUpdate.URL, monitorToUpdate.ExpectedKeyword)
 }
 
 func (m *MonitorService) Delete(ctx context.Context, ID int64) error {

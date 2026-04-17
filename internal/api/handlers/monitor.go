@@ -16,9 +16,9 @@ import (
 
 type MonitorUseCase interface {
 	ListAll(ctx context.Context) ([]*domain.Monitor, error)
-	Create(ctx context.Context, url string) (*domain.Monitor, error)
 	GetByID(ctx context.Context, id int64) (*domain.Monitor, error)
-	Update(ctx context.Context, id int64, url string) (*domain.Monitor, error)
+	Create(ctx context.Context, url, expectedKeyword string) (*domain.Monitor, error)
+	Update(ctx context.Context, id int64, url, expectedKeyword string) (*domain.Monitor, error)
 	Delete(ctx context.Context, id int64) error
 	GetStats(ctx context.Context, monitorID int64) (*domain.MonitorStats, error)
 }
@@ -29,11 +29,13 @@ type MonitorHandler struct {
 }
 
 type CreateRequest struct {
-	URL string `json:"url"`
+	URL             string `json:"url"`
+	ExpectedKeyword string `json:"expected_keyword"`
 }
 
 type UpdateRequest struct {
-	URL string `json:"url"`
+	URL             string `json:"url"`
+	ExpectedKeyword string `json:"expected_keyword"`
 }
 
 type CreateResponse struct {
@@ -129,7 +131,7 @@ func (h *MonitorHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	monitor, err := h.useCase.Create(r.Context(), request.URL)
+	monitor, err := h.useCase.Create(r.Context(), request.URL, request.ExpectedKeyword)
 	if err != nil {
 		h.log.Error("failed create new monitor", slog.Any("error", err))
 		response.Error(w, http.StatusInternalServerError, err.Error())
@@ -176,7 +178,7 @@ func (h *MonitorHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updatedMonitor, err := h.useCase.Update(r.Context(), id, request.URL)
+	updatedMonitor, err := h.useCase.Update(r.Context(), id, request.URL, request.ExpectedKeyword)
 	if err != nil {
 		if errors.Is(err, domain.ErrMonitorNotFound) {
 			h.log.Error("failed find monitor", slog.Any("error", err))

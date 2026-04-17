@@ -2,7 +2,9 @@ package worker
 
 import (
 	"context"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -15,7 +17,7 @@ type PingResult struct {
 	TLSCertExpiry *time.Time
 }
 
-func PingSite(ctx context.Context, url string) PingResult {
+func PingSite(ctx context.Context, url, expectedKeyword string) PingResult {
 
 	client := &http.Client{
 		Timeout: time.Second * 10,
@@ -47,17 +49,39 @@ func PingSite(ctx context.Context, url string) PingResult {
 	}
 	defer response.Body.Close()
 
+	bodyBytes, readErr := io.ReadAll(response.Body)
+	if readErr != nil {
+		return PingResult{
+			URL:          url,
+			IsUp:         false,
+			StatusCode:   response.StatusCode,
+			Duration:     duration,
+			ErrorMessage: "failed to read response body: " + readErr.Error(),
+		}
+	}
+
 	var certExpiry *time.Time
 	if response.TLS != nil && len(response.TLS.PeerCertificates) > 0 {
-		certExpiry = new(response.TLS.PeerCertificates[0].NotAfter)
+		expiry := response.TLS.PeerCertificates[0].NotAfter
+		certExpiry = &expiry
 	}
 
 	isUp := response.StatusCode >= 200 && response.StatusCode < 400
+	errorMessage := ""
+
+	if isUp && expectedKeyword != "" {
+		if !strings.Contains(string(bodyBytes), expectedKeyword) {
+			isUp = false
+			errorMessage = "keyword '" + expectedKeyword + "' not found in response"
+		}
+	}
+
 	return PingResult{
 		URL:           url,
 		IsUp:          isUp,
 		StatusCode:    response.StatusCode,
 		Duration:      duration,
+		ErrorMessage:  errorMessage,
 		TLSCertExpiry: certExpiry,
 	}
 }

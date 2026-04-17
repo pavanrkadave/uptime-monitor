@@ -15,10 +15,11 @@ var (
 )
 
 type Monitor struct {
-	ID        int64      `json:"id"`
-	URL       string     `json:"url"`
-	CreatedAt *time.Time `json:"created_at"`
-	UpdatedAt *time.Time `json:"updated_at"`
+	ID              int64      `json:"id"`
+	URL             string     `json:"url"`
+	ExpectedKeyword string     `json:"expected_keyword"`
+	CreatedAt       *time.Time `json:"created_at"`
+	UpdatedAt       *time.Time `json:"updated_at"`
 }
 
 func (m Monitor) Validate() error {
